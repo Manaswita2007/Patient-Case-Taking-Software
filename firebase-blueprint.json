@@ -1,0 +1,114 @@
+{
+  "entities": {
+    "Patient": {
+      "title": "Patient",
+      "description": "Stores patient demographics.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 256 },
+        "abhaId": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "name", "abhaId"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "Stores generated clinical summaries.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "patientId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "ayushMode": { "type": "boolean" },
+        "summary": { "type": "object" },
+        "rawOutput": { "type": "string", "maxLength": 100000 },
+        "allopathyDiagnosis": { "type": "string", "maxLength": 10000 },
+        "allopathySuggestions": { "type": "string", "maxLength": 10000 },
+        "ayushDiagnosis": { "type": "string", "maxLength": 10000 },
+        "ayushSuggestions": { "type": "string", "maxLength": 10000 }
+      },
+      "required": ["id", "patientId", "createdAt", "summary", "rawOutput"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "Stores doctor appointment schedules.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "reportId": { "type": "string", "maxLength": 128 },
+        "patientId": { "type": "string", "maxLength": 128 },
+        "patientName": { "type": "string", "maxLength": 256 },
+        "doctorName": { "type": "string", "maxLength": 256 },
+        "date": { "type": "string", "maxLength": 64 },
+        "slot": { "type": "string", "maxLength": 64 },
+        "status": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "reportId", "patientId", "patientName", "doctorName", "date", "slot", "status", "createdAt"]
+    },
+    "Doctor": {
+      "title": "Doctor",
+      "description": "Stores verified doctor and specialist credentials.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 256 },
+        "email": { "type": "string", "maxLength": 256 },
+        "hospital": { "type": "string", "maxLength": 256 },
+        "department": { "type": "string", "maxLength": 128 },
+        "degree": { "type": "string", "maxLength": 128 },
+        "licenseNo": { "type": "string", "maxLength": 128 },
+        "registeredAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "name", "email", "hospital"]
+    },
+    "DoctorDatabase": {
+      "title": "DoctorDatabase",
+      "description": "Dedicated database entity for each individual doctor in Firebase.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "databaseName": { "type": "string", "maxLength": 128 },
+        "doctorName": { "type": "string", "maxLength": 256 },
+        "hospital": { "type": "string", "maxLength": 256 },
+        "email": { "type": "string", "maxLength": 256 },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "databaseName", "doctorName"]
+    }
+  },
+  "firestore": {
+    "/patients/{patientId}": {
+      "schema": { "$ref": "#/entities/Patient" },
+      "description": "Patient records"
+    },
+    "/reports/{reportId}": {
+      "schema": { "$ref": "#/entities/Report" },
+      "description": "Generated reports"
+    },
+    "/appointments/{appointmentId}": {
+      "schema": { "$ref": "#/entities/Appointment" },
+      "description": "Scheduled appointments"
+    },
+    "/doctors/{doctorId}": {
+      "schema": { "$ref": "#/entities/Doctor" },
+      "description": "Doctor profiles"
+    },
+    "/doctor_databases/{doctorDbName}": {
+      "schema": { "$ref": "#/entities/DoctorDatabase" },
+      "description": "Doctor isolated database registry"
+    },
+    "/doctor_databases/{doctorDbName}/patients/{patientId}": {
+      "schema": { "$ref": "#/entities/Patient" },
+      "description": "Doctor-specific isolated patient cases"
+    },
+    "/doctor_databases/{doctorDbName}/reports/{reportId}": {
+      "schema": { "$ref": "#/entities/Report" },
+      "description": "Doctor-specific isolated clinical reports"
+    },
+    "/doctor_databases/{doctorDbName}/appointments/{appointmentId}": {
+      "schema": { "$ref": "#/entities/Appointment" },
+      "description": "Doctor-specific isolated appointments"
+    }
+  }
+}

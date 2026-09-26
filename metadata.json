@@ -1,0 +1,11 @@
+{
+  "name": "HealthPoint",
+  "description": "HealthPoint - Intelligent clinical intake and emergency healthcare platform for modern hospitals.",
+  "requestFramePermissions": [
+    "microphone",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
