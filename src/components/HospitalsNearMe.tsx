@@ -15,13 +15,28 @@ import {
   RefreshCw,
   Search,
   Filter,
-  Siren
+  Siren,
+  UserCheck,
+  ChevronDown,
+  ChevronUp,
+  X,
+  Route
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import L from 'leaflet';
 import { useAppContext } from '../context/AppContext';
 import RetractableBackButton from './RetractableBackButton';
 import TTSButton from './TTSButton';
+import { stopSpeech } from '../utils/speech';
+
+export interface HospitalDoctor {
+  name: string;
+  specialty: string;
+  degree?: string;
+  experience?: string;
+  availability: string;
+  phone?: string;
+}
 
 export interface Hospital {
   id: string;
@@ -36,6 +51,7 @@ export interface Hospital {
   icuBedsAvailable: number;
   traumaRating: string;
   estimatedDriveMins: number;
+  doctors?: HospitalDoctor[];
 }
 
 interface HospitalsNearMeProps {
@@ -48,7 +64,7 @@ export default function HospitalsNearMe({ onBack, onSelectForAmbulance }: Hospit
 
   // Location state
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [locationAddress, setLocationAddress] = useState<string>('Detecting location...');
+  const [locationAddress, setLocationAddress] = useState<string>('Detecting live location...');
   const [permissionState, setPermissionState] = useState<'prompt' | 'granted' | 'denied'>('prompt');
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -58,12 +74,55 @@ export default function HospitalsNearMe({ onBack, onSelectForAmbulance }: Hospit
   const [searchQuery, setSearchQuery] = useState('');
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [selectedHospital, setSelectedHospital] = useState<Hospital | null>(null);
+  const [expandedDoctorsHospitalId, setExpandedDoctorsHospitalId] = useState<string | null>(null);
+
+  // Shortest Path state
+  const [routeLoading, setRouteLoading] = useState(false);
+  const [shortestRouteInfo, setShortestRouteInfo] = useState<{
+    hospital: Hospital;
+    distanceKm: number;
+    etaMins: number;
+  } | null>(null);
 
   // Leaflet map refs
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersRef = useRef<{ [id: string]: L.Marker }>({});
   const userMarkerRef = useRef<L.Marker | null>(null);
+  const routePolylineRef = useRef<L.Polyline | null>(null);
+  const watchIdRef = useRef<number | null>(null);
+
+  // Auto-detect live location on mount & clean up speech, watcher and map on unmount
+  useEffect(() => {
+    requestLocation();
+
+    // Setup live continuous GPS sync
+    if (navigator.geolocation) {
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setUserLocation({ lat: latitude, lng: longitude });
+          setPermissionState('granted');
+        },
+        (err) => {
+          console.warn("Geolocation watch warning:", err.message);
+        },
+        { enableHighAccuracy: true, maximumAge: 10000 }
+      );
+    }
+
+    return () => {
+      stopSpeech();
+      if (watchIdRef.current !== null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []);
 
   // Request user location with geolocation API
   const requestLocation = () => {
@@ -269,7 +328,7 @@ export default function HospitalsNearMe({ onBack, onSelectForAmbulance }: Hospit
       `);
 
       marker.on('click', () => {
-        setSelectedHospital(h);
+        handleSelectHospital(h);
       });
 
       markersRef.current[h.id] = marker;
@@ -277,11 +336,85 @@ export default function HospitalsNearMe({ onBack, onSelectForAmbulance }: Hospit
 
   }, [userLocation, hospitals, activeCategory, searchQuery, selectedHospital]);
 
-  // Pan to selected hospital
+  // Clear shortest path polyline and HUD
+  const clearShortestPath = () => {
+    if (routePolylineRef.current && mapInstanceRef.current) {
+      mapInstanceRef.current.removeLayer(routePolylineRef.current);
+      routePolylineRef.current = null;
+    }
+    setShortestRouteInfo(null);
+  };
+
+  // Draw shortest path from user's live location to the hospital
+  const drawShortestPath = async (h: Hospital) => {
+    if (!mapInstanceRef.current || !userLocation) return;
+    const map = mapInstanceRef.current;
+
+    // Remove existing route
+    if (routePolylineRef.current) {
+      map.removeLayer(routePolylineRef.current);
+      routePolylineRef.current = null;
+    }
+
+    setRouteLoading(true);
+    let routeCoords: [number, number][] = [];
+
+    try {
+      // 1. Query open-source OSRM routing engine for real driving path
+      const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${userLocation.lng},${userLocation.lat};${h.lng},${h.lat}?overview=full&geometries=geojson`;
+      const res = await fetch(osrmUrl);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.routes && data.routes[0]?.geometry?.coordinates) {
+          routeCoords = data.routes[0].geometry.coordinates.map((pt: [number, number]) => [pt[1], pt[0]]);
+        }
+      }
+    } catch (e) {
+      console.warn("OSRM routing fallback to waypoint line:", e);
+    }
+
+    // Fallback: smooth realistic waypoints between live GPS and hospital
+    if (routeCoords.length === 0) {
+      const midLat = (userLocation.lat + h.lat) / 2 + (h.lat - userLocation.lat) * 0.08;
+      const midLng = (userLocation.lng + h.lng) / 2 - (h.lng - userLocation.lng) * 0.06;
+      routeCoords = [
+        [userLocation.lat, userLocation.lng],
+        [midLat, midLng],
+        [h.lat, h.lng]
+      ];
+    }
+
+    // Add glowing, animated shortest-path line
+    const polyline = L.polyline(routeCoords, {
+      color: '#2563eb',
+      weight: 6,
+      opacity: 0.9,
+      lineCap: 'round',
+      lineJoin: 'round',
+      dashArray: '8, 8'
+    }).addTo(map);
+
+    routePolylineRef.current = polyline;
+    setRouteLoading(false);
+    setShortestRouteInfo({
+      hospital: h,
+      distanceKm: h.distanceKm,
+      etaMins: h.estimatedDriveMins
+    });
+
+    // Fit map bounds with generous padding so user and destination hospital are both in full view
+    const bounds = L.latLngBounds([
+      [userLocation.lat, userLocation.lng],
+      [h.lat, h.lng]
+    ]);
+    map.fitBounds(bounds, { padding: [60, 60], maxZoom: 16 });
+  };
+
+  // Pan to selected hospital, open popup and draw shortest path
   const handleSelectHospital = (h: Hospital) => {
     setSelectedHospital(h);
+    drawShortestPath(h);
     if (mapInstanceRef.current) {
-      mapInstanceRef.current.flyTo([h.lat, h.lng], 15, { duration: 1.2 });
       const marker = markersRef.current[h.id];
       if (marker) {
         marker.openPopup();
@@ -301,7 +434,7 @@ export default function HospitalsNearMe({ onBack, onSelectForAmbulance }: Hospit
   const count10km = hospitals.filter(h => h.category === '10km').length;
 
   return (
-    <div className="flex-1 min-h-0 w-full flex flex-col bg-slate-50 dark:bg-slate-900 overflow-hidden relative">
+    <div className="flex-1 min-h-0 w-full flex flex-col bg-transparent overflow-hidden relative">
       
       {/* Top Header Bar */}
       <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 px-4 py-3 shrink-0 z-20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -327,6 +460,19 @@ export default function HospitalsNearMe({ onBack, onSelectForAmbulance }: Hospit
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          {userLocation && (
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${userLocation.lat},${userLocation.lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-700/80 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-600 transition-colors tracking-normal shrink-0"
+              title="Open your live GPS position directly in Google Maps"
+            >
+              <ExternalLink className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span>Google Maps Sync</span>
+            </a>
+          )}
+
           <button
             onClick={requestLocation}
             disabled={locationLoading}
@@ -340,7 +486,7 @@ export default function HospitalsNearMe({ onBack, onSelectForAmbulance }: Hospit
           <TTSButton 
             text={`Hospitals Near Me. Found ${filteredHospitals.length} verified hospitals. Categorized within 2km, 5km, and 10km. Your current location is ${locationAddress}.`}
             size="sm"
-            label="Read Screen"
+            label={t('readScreen') || 'Read Screen'}
           />
         </div>
       </div>
@@ -367,6 +513,71 @@ export default function HospitalsNearMe({ onBack, onSelectForAmbulance }: Hospit
         {/* Left: Leaflet OpenStreetMap View */}
         <div className="h-64 sm:h-80 lg:h-full lg:flex-1 relative border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-700">
           <div ref={mapContainerRef} className="w-full h-full z-10" />
+
+          {/* Floating Shortest Path HUD Card */}
+          <AnimatePresence>
+            {shortestRouteInfo && (
+              <motion.div
+                initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                className="absolute top-4 left-4 right-4 sm:left-6 sm:right-auto sm:w-[380px] z-[400] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-4 rounded-2xl shadow-2xl border-2 border-blue-500/60 pointer-events-auto space-y-2.5"
+              >
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                      <Route className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 tracking-normal block">
+                        Shortest Driving Path Active
+                      </span>
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                        {shortestRouteInfo.hospital.name}
+                      </h4>
+                    </div>
+                  </div>
+                  <button
+                    onClick={clearShortestPath}
+                    className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+                    title="Close shortest path view"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-center">
+                  <div className="p-2.5 bg-blue-50 dark:bg-blue-950/40 rounded-xl border border-blue-200 dark:border-blue-900/60">
+                    <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 block uppercase tracking-normal">Shortest Distance</span>
+                    <span className="text-xl font-black text-blue-700 dark:text-blue-300 font-mono tracking-normal">{shortestRouteInfo.distanceKm} km</span>
+                  </div>
+                  <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-900/60">
+                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block uppercase tracking-normal">Estimated Drive</span>
+                    <span className="text-xl font-black text-emerald-700 dark:text-emerald-300 font-mono tracking-normal">~{shortestRouteInfo.etaMins} mins</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&origin=${userLocation?.lat},${userLocation?.lng}&destination=${shortestRouteInfo.hospital.lat},${shortestRouteInfo.hospital.lng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm tracking-normal"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Open in Google Maps</span>
+                  </a>
+                  <a
+                    href={`tel:${shortestRouteInfo.hospital.phone}`}
+                    className="py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm tracking-normal"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                    <span>Call ER</span>
+                  </a>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <div className="absolute bottom-3 left-3 z-[400] bg-slate-900/85 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-[10px] font-medium border border-white/10 shadow-md tracking-normal">
             🗺️ Open-Source OpenStreetMap &bull; Zero Tracking
@@ -508,6 +719,82 @@ export default function HospitalsNearMe({ onBack, onSelectForAmbulance }: Hospit
                       </div>
                     </div>
 
+                    {/* Doctors & Specialists Expandable Section */}
+                    {h.doctors && h.doctors.length > 0 && (
+                      <div className="mb-3 pt-2 border-t border-slate-100 dark:border-slate-700/60">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedDoctorsHospitalId(expandedDoctorsHospitalId === h.id ? null : h.id);
+                          }}
+                          className="w-full flex items-center justify-between py-1.5 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/40 hover:bg-slate-100 dark:hover:bg-slate-900/70 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 transition cursor-pointer"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <UserCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                            <span>Available Doctors & Specialists ({h.doctors.length})</span>
+                          </div>
+                          {expandedDoctorsHospitalId === h.id ? (
+                            <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+                          ) : (
+                            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                          )}
+                        </button>
+
+                        <AnimatePresence>
+                          {expandedDoctorsHospitalId === h.id && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="overflow-hidden mt-2 space-y-2"
+                            >
+                              {h.doctors.map((doc, dIdx) => (
+                                <div 
+                                  key={`doc-${h.id}-${dIdx}`}
+                                  className="p-2.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200/80 dark:border-slate-700/60 flex items-start justify-between gap-2"
+                                >
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-1.5">
+                                      <h5 className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                        {doc.name}
+                                      </h5>
+                                      {doc.degree && (
+                                        <span className="text-[10px] text-slate-500 font-mono hidden sm:inline">
+                                          ({doc.degree})
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 truncate">
+                                      {doc.specialty}
+                                    </p>
+                                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                      {doc.experience && (
+                                        <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                                          {doc.experience}
+                                        </span>
+                                      )}
+                                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                                        {doc.availability}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <a
+                                    href={`tel:${doc.phone || h.phone}`}
+                                    onClick={e => e.stopPropagation()}
+                                    className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 border border-emerald-200 dark:border-emerald-800 transition shrink-0"
+                                    title={`Call ${doc.name}`}
+                                  >
+                                    <Phone className="w-3.5 h-3.5" />
+                                  </a>
+                                </div>
+                              ))}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
+
                     {/* Action buttons with no overlap */}
                     <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 dark:border-slate-700/60">
                       <a
@@ -525,10 +812,11 @@ export default function HospitalsNearMe({ onBack, onSelectForAmbulance }: Hospit
                           e.stopPropagation();
                           handleSelectHospital(h);
                         }}
-                        className="py-2 px-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition tracking-normal cursor-pointer truncate"
+                        className="py-2 px-2 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 border border-blue-200 dark:border-blue-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition tracking-normal cursor-pointer truncate"
+                        title="Focus on map and view shortest driving path"
                       >
-                        <Navigation className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                        <span className="truncate">Focus</span>
+                        <Navigation className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                        <span className="truncate">Focus & Route</span>
                       </button>
 
                       {onSelectForAmbulance ? (

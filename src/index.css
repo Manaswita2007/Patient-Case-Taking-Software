@@ -44,3 +44,22 @@ input[type=number] {
   -moz-appearance: textfield;
 }
 
+/* Leaflet Map Dark Mode Styling & Glitch Prevention */
+.dark .leaflet-tile {
+  filter: brightness(0.65) invert(1) contrast(2.6) hue-rotate(200deg) saturate(0.35) brightness(0.8);
+}
+.dark .leaflet-container {
+  background: #060913 !important;
+}
+.dark .leaflet-popup-content-wrapper,
+.dark .leaflet-popup-tip {
+  background: #0f172a !important;
+  color: #f8fafc !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6) !important;
+  border: 1px solid rgba(51, 65, 85, 0.8) !important;
+}
+.dark .leaflet-popup-content {
+  color: #f8fafc !important;
+}
+
+

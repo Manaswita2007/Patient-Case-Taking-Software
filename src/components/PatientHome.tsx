@@ -28,8 +28,8 @@ export default function PatientHome({
   onOpenAmbulance
 }: { 
   onStartIntake: () => void;
-  onOpenHospitals: () => void;
-  onOpenAmbulance: () => void;
+  onOpenHospitals?: () => void;
+  onOpenAmbulance?: () => void;
 }) {
   const { t } = useAppContext();
   const [appointments, setAppointments] = useState<any[]>([]);
@@ -181,94 +181,6 @@ export default function PatientHome({
               </div>
             </div>
           </motion.button>
-
-          {/* TWO NEW OPTIONS BELOW REPORT A MEDICAL PROBLEM */}
-          {/* 1. Hospitals Near Me */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.15 }}
-            onClick={onOpenHospitals}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="group relative overflow-hidden bg-gradient-to-br from-emerald-600 to-teal-700 p-6 sm:p-7 rounded-3xl shadow-lg shadow-emerald-900/20 text-left border border-emerald-500/40 cursor-pointer flex flex-col justify-between"
-          >
-            <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110 duration-500">
-              <Building2 className="w-36 h-36" />
-            </div>
-
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-white/15 backdrop-blur-md text-white rounded-2xl flex items-center justify-center border border-white/20 shadow-md">
-                  <Building2 className="w-6 h-6" />
-                </div>
-                <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 text-white px-2.5 py-1 rounded-full border border-white/20">
-                  {t('openSourceMap') || 'Open-Source Map'}
-                </span>
-              </div>
-
-              <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight mb-2">
-                {t('hospitalsNearMe')}
-              </h3>
-              <p className="text-emerald-100 text-xs sm:text-sm leading-relaxed mb-4">
-                {t('hospitalsNearMeDesc') || 'Locate nearby verified hospitals, trauma care, and emergency OPDs categorized within 2km, 5km, and 10km on an interactive live map.'}
-              </p>
-            </div>
-
-            <div className="relative z-10 pt-3 border-t border-white/15 flex items-center justify-between text-xs font-bold text-white">
-              <span className="flex items-center gap-1.5 text-emerald-100">
-                <MapPin className="w-3.5 h-3.5 text-emerald-200" /> {t('autoGpsDetection') || 'Auto GPS Detection'}
-              </span>
-              <div className="flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                <span>{t('exploreMap') || 'Explore Map'}</span>
-                <ArrowRight className="w-4 h-4" />
-              </div>
-            </div>
-          </motion.div>
-
-          {/* 2. Emergency Ambulance */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.18 }}
-            onClick={onOpenAmbulance}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="group relative overflow-hidden bg-gradient-to-br from-red-600 via-rose-600 to-red-700 p-6 sm:p-7 rounded-3xl shadow-lg shadow-red-900/25 text-left border border-red-500/40 cursor-pointer flex flex-col justify-between"
-          >
-            <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110 duration-500">
-              <Siren className="w-36 h-36" />
-            </div>
-
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-white/15 backdrop-blur-md text-white rounded-2xl flex items-center justify-center border border-white/20 shadow-md">
-                  <Siren className="w-6 h-6 animate-pulse" />
-                </div>
-                <span className="text-[10px] font-black uppercase tracking-wider bg-white/25 text-white px-2.5 py-1 rounded-full border border-white/25 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
-                  {t('dispatch24x7') || '24x7 Dispatch'}
-                </span>
-              </div>
-
-              <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight mb-2">
-                {t('emergencyAmbulance')}
-              </h3>
-              <p className="text-red-100 text-xs sm:text-sm leading-relaxed mb-4">
-                {t('emergencyAmbulanceDesc') || 'Book and dispatch an urgent emergency ambulance (ALS/BLS) to your current location. Track its exact live position, distance, and time to reach (ETA) on a map.'}
-              </p>
-            </div>
-
-            <div className="relative z-10 pt-3 border-t border-white/15 flex items-center justify-between text-xs font-bold text-white">
-              <span className="flex items-center gap-1.5 text-red-100">
-                <Clock className="w-3.5 h-3.5 text-red-200" /> {t('liveEtaDistance') || 'Live ETA & Distance'}
-              </span>
-              <div className="flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                <span>{t('bookAmbulance')}</span>
-                <ArrowRight className="w-4 h-4" />
-              </div>
-            </div>
-          </motion.div>
 
           {/* Upcoming Appointment */}
           <motion.div

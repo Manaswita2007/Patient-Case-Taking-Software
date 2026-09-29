@@ -19,13 +19,15 @@ import {
   RefreshCw,
   Share2,
   Compass,
-  Gauge
+  Gauge,
+  ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import L from 'leaflet';
 import { useAppContext } from '../context/AppContext';
 import RetractableBackButton from './RetractableBackButton';
 import TTSButton from './TTSButton';
+import { stopSpeech } from '../utils/speech';
 import { Hospital } from './HospitalsNearMe';
 
 interface EmergencyAmbulanceProps {
@@ -57,11 +59,32 @@ export default function EmergencyAmbulance({ onBack, destinationHospital }: Emer
   const formMapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const formMapInstanceRef = useRef<L.Map | null>(null);
+  const formPatientMarkerRef = useRef<L.Marker | null>(null);
   const patientMarkerRef = useRef<L.Marker | null>(null);
   const ambulanceMarkerRef = useRef<L.Marker | null>(null);
   const routeLineRef = useRef<L.Polyline | null>(null);
+  const watchIdRef = useRef<number | null>(null);
 
-  // Geolocation detection
+  // Clean up any ongoing TTS, GPS watch & Leaflet maps on unmount
+  useEffect(() => {
+    return () => {
+      stopSpeech();
+      if (watchIdRef.current !== null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      if (formMapInstanceRef.current) {
+        formMapInstanceRef.current.remove();
+        formMapInstanceRef.current = null;
+      }
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []);
+
+  // Geolocation continuous detection & sync
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -76,6 +99,18 @@ export default function EmergencyAmbulance({ onBack, destinationHospital }: Emer
           setPatientAddress("AIIMS Medical Corridor / Ring Road, New Delhi");
         },
         { enableHighAccuracy: true, timeout: 8000 }
+      );
+
+      // Continuous GPS watch for live location sync
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          setPatientLocation({ lat: latitude, lng: longitude });
+        },
+        (err) => {
+          console.warn("Ambulance live location watch error:", err.message);
+        },
+        { enableHighAccuracy: true, maximumAge: 10000 }
       );
     }
   }, []);
@@ -122,10 +157,11 @@ export default function EmergencyAmbulance({ onBack, destinationHospital }: Emer
         iconAnchor: [18, 18],
       });
 
-      L.marker([patientLocation.lat, patientLocation.lng], { icon: patientIcon })
+      const pMarker = L.marker([patientLocation.lat, patientLocation.lng], { icon: patientIcon })
         .addTo(map)
         .bindPopup(`<b>📍 Your Location</b><br/>${patientAddress}`)
         .openPopup();
+      formPatientMarkerRef.current = pMarker;
 
       // Add 2 standby ambulance depot markers within 2-3km
       const amb1Lat = patientLocation.lat + 0.016;
@@ -153,10 +189,16 @@ export default function EmergencyAmbulance({ onBack, destinationHospital }: Emer
         .bindPopup("<b>HealthPoint Rapid Response Depot #2</b><br/>BLS Unit on Standby • 8 mins ETA");
 
       formMapInstanceRef.current = map;
+      setTimeout(() => map.invalidateSize(), 200);
     } else {
+      if (formPatientMarkerRef.current) {
+        formPatientMarkerRef.current.setLatLng([patientLocation.lat, patientLocation.lng]);
+        formPatientMarkerRef.current.setPopupContent(`<b>📍 Your Location</b><br/>${patientAddress}`);
+      }
       formMapInstanceRef.current.setView([patientLocation.lat, patientLocation.lng], 14);
+      formMapInstanceRef.current.invalidateSize();
     }
-  }, [bookingState, patientLocation.lat, patientLocation.lng]);
+  }, [bookingState, patientLocation.lat, patientLocation.lng, patientAddress]);
 
   // Submit Emergency Ambulance Booking
   const handleDispatch = async (e: React.FormEvent) => {
@@ -218,6 +260,10 @@ export default function EmergencyAmbulance({ onBack, destinationHospital }: Emer
         ambulanceType
       };
       setActiveBooking(mockBooking);
+      if (formMapInstanceRef.current) {
+        formMapInstanceRef.current.remove();
+        formMapInstanceRef.current = null;
+      }
       setBookingState('tracking');
     } finally {
       setIsDispatching(false);
@@ -406,7 +452,7 @@ export default function EmergencyAmbulance({ onBack, destinationHospital }: Emer
   };
 
   return (
-    <div className="flex-1 min-h-0 w-full flex flex-col bg-slate-50 dark:bg-slate-900 overflow-hidden relative">
+    <div className="flex-1 min-h-0 w-full flex flex-col bg-transparent overflow-hidden relative tracking-normal">
       
       {/* Top Header Bar */}
       <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 px-4 py-3 shrink-0 z-20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -432,6 +478,21 @@ export default function EmergencyAmbulance({ onBack, destinationHospital }: Emer
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          <a
+            href={
+              bookingState === 'tracking' && activeBooking
+                ? `https://www.google.com/maps/dir/?api=1&origin=${activeBooking.currentAmbulanceLat},${activeBooking.currentAmbulanceLng}&destination=${activeBooking.patientLat},${activeBooking.patientLng}&travelmode=driving`
+                : `https://www.google.com/maps/search/?api=1&query=${patientLocation.lat},${patientLocation.lng}`
+            }
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-700/80 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-600 transition-colors tracking-normal shrink-0"
+            title="Open live dispatch coordinates directly in Google Maps"
+          >
+            <ExternalLink className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+            <span>Google Maps Sync</span>
+          </a>
+
           <a
             href="tel:108"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-red-600 hover:bg-red-500 text-white shadow-md shadow-red-600/30 transition-all cursor-pointer tracking-normal shrink-0"
@@ -646,10 +707,23 @@ export default function EmergencyAmbulance({ onBack, destinationHospital }: Emer
               {/* Full-Window Leaflet Map */}
               <div ref={mapContainerRef} className="w-full h-full min-h-[460px] flex-1 z-0 relative" />
 
-              {/* Floating HUD Panel Over Map */}
-              <div className="absolute top-4 left-4 right-4 sm:left-6 sm:right-auto sm:w-[420px] z-10 pointer-events-auto space-y-3">
+              {/* Floating HUD Panel Over Map (Movable & Draggable) */}
+              <motion.div 
+                drag
+                dragMomentum={false}
+                dragElastic={0.08}
+                className="absolute top-4 left-4 right-4 sm:left-6 sm:right-auto sm:w-[420px] z-20 pointer-events-auto space-y-3 cursor-grab active:cursor-grabbing"
+              >
                 <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-5 rounded-3xl shadow-2xl border-2 border-red-500/50 space-y-4">
                   
+                  {/* Drag Handle Indicator */}
+                  <div className="flex flex-col items-center justify-center -mt-1 pb-1">
+                    <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full" />
+                    <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-normal mt-1">
+                      Drag to Reposition Window
+                    </span>
+                  </div>
+
                   {/* Status Banner */}
                   <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 gap-2">
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -720,16 +794,27 @@ export default function EmergencyAmbulance({ onBack, destinationHospital }: Emer
                   <div className="flex items-center gap-2 pt-1">
                     <a
                       href={`tel:${activeBooking.crewPhone}`}
-                      className="flex-1 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-normal transition shadow-md flex items-center justify-center gap-1.5"
+                      className="flex-1 py-3 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-normal transition shadow-md flex items-center justify-center gap-1.5"
                     >
                       <Phone className="w-4 h-4" />
                       <span>{t('callParamedic') || 'Call Paramedic'}</span>
                     </a>
 
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&origin=${activeBooking.currentAmbulanceLat},${activeBooking.currentAmbulanceLng}&destination=${activeBooking.patientLat},${activeBooking.patientLng}&travelmode=driving`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="py-3 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition flex items-center justify-center gap-1 shadow-md tracking-normal"
+                      title="Open live navigation in Google Maps"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      <span className="hidden sm:inline">Maps Sync</span>
+                    </a>
+
                     <button
                       type="button"
                       onClick={handleShare}
-                      className="py-3 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition flex items-center justify-center cursor-pointer tracking-normal"
+                      className="py-3 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition flex items-center justify-center cursor-pointer tracking-normal"
                       title={t('shareLiveLink') || 'Share live link'}
                     >
                       {copiedLink ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Share2 className="w-4 h-4" />}
@@ -738,14 +823,14 @@ export default function EmergencyAmbulance({ onBack, destinationHospital }: Emer
                     <button
                       type="button"
                       onClick={() => setShowCancelModal(true)}
-                      className="py-3 px-3.5 rounded-xl border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 hover:bg-rose-50 text-xs font-bold transition flex items-center justify-center cursor-pointer tracking-normal"
+                      className="py-3 px-3 rounded-xl border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 hover:bg-rose-50 text-xs font-bold transition flex items-center justify-center cursor-pointer tracking-normal"
                       title={t('cancelAmbulance') || 'Cancel ambulance'}
                     >
                       <X className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
               {/* Cancellation Confirmation Modal */}
               <AnimatePresence>

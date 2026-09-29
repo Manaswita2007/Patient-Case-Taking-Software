@@ -404,8 +404,7 @@ export default function DoctorDashboard() {
   };
 
   return (
-    <div className="flex-1 min-h-0 h-full w-full overflow-y-auto overflow-x-hidden bg-slate-50 dark:bg-slate-900 relative transition-colors flex flex-col">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-50/60 dark:from-teal-950/20 via-slate-50 dark:via-slate-900 to-slate-50 dark:to-slate-900 pointer-events-none"></div>
+    <div className="flex-1 min-h-0 h-full w-full overflow-y-auto overflow-x-hidden bg-transparent relative transition-colors flex flex-col">
 
       {/* Floating Critical Alert Toast Notifications */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none">

@@ -19,6 +19,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAppContext } from '../context/AppContext';
 import RetractableBackButton from './RetractableBackButton';
 import TTSButton from './TTSButton';
+import { stopSpeech } from '../utils/speech';
 
 type AuthMode = 'login' | 'register';
 type IdentifierType = 'email' | 'phone' | 'abha';
@@ -59,6 +60,9 @@ export default function PatientLogin() {
     if (saved) {
       setExistingSession(saved);
     }
+    return () => {
+      stopSpeech();
+    };
   }, []);
 
   const handleStartFresh = () => {
@@ -253,9 +257,7 @@ export default function PatientLogin() {
   };
 
   return (
-    <div className="flex-1 min-h-0 h-full w-full overflow-y-auto overflow-x-hidden bg-slate-50 dark:bg-slate-900 relative transition-colors">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-100/40 dark:from-blue-900/30 via-slate-50 dark:via-slate-900 to-slate-50 dark:to-slate-900 pointer-events-none" />
-
+    <div className="flex-1 min-h-0 h-full w-full overflow-y-auto overflow-x-hidden bg-transparent relative transition-colors">
       <div className="min-h-full w-full flex flex-col items-center justify-start px-3 py-4 sm:py-6">
         {/* Back to Home */}
         <div className="w-full max-w-[420px] mb-3 flex items-center justify-start z-10">
@@ -278,18 +280,18 @@ export default function PatientLogin() {
                 <UserRound className="w-5 h-5" />
               </div>
               <TTSButton
-                text={`Patient Access Portal. ${mode === 'login' ? 'Sign in with your ABHA ID, mobile phone number, or email.' : 'Register new account with your ABHA ID, mobile phone number, or email.'}`}
+                text={`${t('patientPortalTitle') || 'Patient Access Portal'}. ${mode === 'login' ? (t('signInLogin') || 'Sign in') : (t('registerNewAccount') || 'Register account')}`}
                 size="sm"
-                label="Read Screen"
+                label={t('readAloud') || "Read Screen"}
                 className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                 id="patient-login-tts-header"
               />
             </div>
             <h2 className="text-base sm:text-lg font-black tracking-tight text-white mt-1">
-              Patient Access Portal
+              {t('patientPortalTitle') || "Patient Access Portal"}
             </h2>
             <p className="text-slate-300 text-[11px] font-medium">
-              National Health Interoperability & Clinical Intake
+              {t('nationalHealthInteroperability') || "National Health Interoperability & Clinical Intake"}
             </p>
 
             {/* Mode Switcher Tabs: Login vs Register */}
@@ -303,7 +305,7 @@ export default function PatientLogin() {
                     : 'text-slate-300 hover:text-white'
                 }`}
               >
-                Sign In / Login
+                {t('signInLogin') || "Sign In / Login"}
               </button>
               <button
                 type="button"
@@ -314,7 +316,7 @@ export default function PatientLogin() {
                     : 'text-slate-300 hover:text-white'
                 }`}
               >
-                Create Account / Register
+                {t('registerNewAccount') || "Create Account / Register"}
               </button>
             </div>
           </div>
@@ -325,7 +327,7 @@ export default function PatientLogin() {
               <div className="mb-3.5 p-2.5 bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 text-xs font-semibold rounded-xl flex items-center justify-between gap-2 border border-blue-200 dark:border-blue-900/50">
                 <div className="flex items-center gap-1.5 truncate">
                   <UserRound className="w-3.5 h-3.5 shrink-0 text-blue-600 dark:text-blue-400" />
-                  <span className="truncate">Active patient session found</span>
+                  <span className="truncate">{t('activeSessionFound') || "Active patient session found"}</span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
@@ -333,14 +335,14 @@ export default function PatientLogin() {
                     onClick={() => navigate('/patient/dashboard')}
                     className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-bold cursor-pointer transition shadow-xs"
                   >
-                    Resume
+                    {t('resume') || "Resume"}
                   </button>
                   <button
                     type="button"
                     onClick={handleStartFresh}
                     className="px-2.5 py-1 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 rounded-lg text-[10px] font-bold cursor-pointer transition shadow-xs"
                   >
-                    Start Fresh
+                    {t('startFresh') || "Start Fresh"}
                   </button>
                 </div>
               </div>
@@ -373,10 +375,10 @@ export default function PatientLogin() {
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                      {mode === 'register' ? 'Register Using' : 'Sign In Using'}
+                      {mode === 'register' ? (t('registerUsing') || 'Register Using') : (t('signInUsing') || 'Sign In Using')}
                     </label>
                     <TTSButton 
-                      text={`Choose your sign in method: ABHA ID, Mobile Phone, or Email ID. Currently selected is ${identifierType.toUpperCase()}.`} 
+                      text={`${mode === 'register' ? 'Register' : 'Sign in'} using ABHA ID, Mobile Phone, or Email.`} 
                       size="sm" 
                     />
                   </div>
@@ -394,7 +396,7 @@ export default function PatientLogin() {
                       }`}
                     >
                       <CreditCard className="w-3.5 h-3.5" />
-                      <span>ABHA ID</span>
+                      <span>{t('abhaIdNumber') || 'ABHA ID'}</span>
                     </button>
 
                     <button
@@ -410,7 +412,7 @@ export default function PatientLogin() {
                       }`}
                     >
                       <Phone className="w-3.5 h-3.5" />
-                      <span>Phone</span>
+                      <span>{t('mobileNumber') || 'Phone'}</span>
                     </button>
 
                     <button
@@ -426,7 +428,7 @@ export default function PatientLogin() {
                       }`}
                     >
                       <Mail className="w-3.5 h-3.5" />
-                      <span>Email ID</span>
+                      <span>{t('emailAddress') || 'Email ID'}</span>
                     </button>
                   </div>
                 </div>
@@ -438,12 +440,12 @@ export default function PatientLogin() {
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                        {identifierType === 'abha' && 'Enter 14-Digit ABHA ID'}
-                        {identifierType === 'phone' && 'Enter 10-Digit Mobile Phone Number'}
-                        {identifierType === 'email' && 'Enter Email Address'}
+                        {identifierType === 'abha' && (t('enterAbhaId') || 'Enter 14-Digit ABHA ID')}
+                        {identifierType === 'phone' && (t('enterMobileNo') || 'Enter 10-Digit Mobile Phone Number')}
+                        {identifierType === 'email' && (t('enterEmailAddress') || 'Enter Email Address')}
                       </label>
                       <TTSButton 
-                        text={`${identifierType === 'abha' ? 'Please enter your 14 digit ABHA ID.' : identifierType === 'phone' ? 'Please enter your 10 digit mobile phone number.' : 'Please enter your email address.'} ${identifier ? `Current value entered is ${identifier}` : 'No value entered yet.'}`} 
+                        text={`${identifierType === 'abha' ? (t('enterAbhaId') || 'Please enter your 14 digit ABHA ID.') : identifierType === 'phone' ? (t('enterMobileNo') || 'Please enter your 10 digit mobile phone number.') : (t('enterEmailAddress') || 'Please enter your email address.')}`} 
                         size="sm" 
                       />
                     </div>
@@ -483,7 +485,7 @@ export default function PatientLogin() {
                     <div className="mt-2 pt-2.5 pb-1 border-t border-slate-100 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700/60 space-y-2.5">
                       <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-800 dark:text-slate-200">
                         <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                        <span>Consent & Legal Acknowledgement</span>
+                        <span>{t('consentLegal') || "Consent & Legal Acknowledgement"}</span>
                       </div>
 
                       {/* Terms of Service Checkbox */}
@@ -499,7 +501,7 @@ export default function PatientLogin() {
                           className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-600 mt-0.5 cursor-pointer"
                         />
                         <label htmlFor="terms-checkbox" className="text-xs text-slate-700 dark:text-slate-300 leading-snug cursor-pointer select-none">
-                          I have read and accept the{' '}
+                          {t('iAgreeToTerms') || "I have read and accept the"}{' '}
                           <button
                             type="button"
                             onClick={(e) => {
@@ -508,7 +510,7 @@ export default function PatientLogin() {
                             }}
                             className="text-blue-600 dark:text-blue-400 font-bold underline hover:text-blue-700 inline-flex items-center gap-0.5 cursor-pointer"
                           >
-                            Terms of Service <ExternalLink className="w-2.5 h-2.5" />
+                            {t('termsOfService') || "Terms of Service"} <ExternalLink className="w-2.5 h-2.5" />
                           </button>
                         </label>
                       </div>
@@ -526,7 +528,7 @@ export default function PatientLogin() {
                           className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-600 mt-0.5 cursor-pointer"
                         />
                         <label htmlFor="privacy-checkbox" className="text-xs text-slate-700 dark:text-slate-300 leading-snug cursor-pointer select-none">
-                          I consent to share my data and have read the{' '}
+                          {t('iAgreeToPrivacy') || "I consent to share my data and have read the"}{' '}
                           <button
                             type="button"
                             onClick={(e) => {
@@ -535,13 +537,13 @@ export default function PatientLogin() {
                             }}
                             className="text-blue-600 dark:text-blue-400 font-bold underline hover:text-blue-700 inline-flex items-center gap-0.5 cursor-pointer"
                           >
-                            Privacy Policy <ExternalLink className="w-2.5 h-2.5" />
+                            {t('privacyPolicy') || "Privacy Policy"} <ExternalLink className="w-2.5 h-2.5" />
                           </button>
                         </label>
                       </div>
 
                       <p className="text-[10px] text-slate-500 dark:text-slate-400 italic">
-                        Note: Your medical records are encrypted and will not be used to train AI models.
+                        {t('dataPrivacyNotice') || "Note: Your medical records are encrypted and will not be used to train AI models."}
                       </p>
                     </div>
                   )}
@@ -553,7 +555,7 @@ export default function PatientLogin() {
                     disabled={loading}
                     className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition shadow-md shadow-blue-600/30 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
                   >
-                    <span>{loading ? "Sending Verification Code..." : "Send OTP Verification Code"}</span>
+                    <span>{loading ? (t('loading') || "Sending...") : (t('sendVerificationOtp') || "Send OTP Verification Code")}</span>
                   </motion.button>
                 </form>
               ) : (
@@ -561,7 +563,7 @@ export default function PatientLogin() {
                   <div className="p-2.5 bg-blue-50 dark:bg-blue-950/40 rounded-xl border border-blue-200 dark:border-blue-900/50 flex items-center justify-between">
                     <div>
                       <div className="text-[10px] uppercase font-bold text-blue-800 dark:text-blue-300">
-                        OTP Sent to {identifierType.toUpperCase()}
+                        {t('otpSentTo') || "OTP Sent to"} {identifierType.toUpperCase()}
                       </div>
                       <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[200px]">
                         {identifier}
@@ -577,7 +579,7 @@ export default function PatientLogin() {
                         onClick={() => setOtpSent(false)}
                         className="text-[11px] text-blue-600 dark:text-blue-400 font-bold hover:underline cursor-pointer"
                       >
-                        Change
+                        {t('change') || "Change"}
                       </button>
                     </div>
                   </div>
@@ -585,21 +587,21 @@ export default function PatientLogin() {
                   {/* OTP Auto-Fill Helper */}
                   <div className="bg-emerald-50 dark:bg-emerald-950/40 p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-800/50 flex items-center justify-between text-xs">
                     <span className="text-emerald-800 dark:text-emerald-300 text-[11px] font-medium">
-                      Verification Code: <code className="font-mono font-bold bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-emerald-300 dark:border-emerald-700">{serverOtp}</code>
+                      {t('verificationCode') || "Verification Code:"} <code className="font-mono font-bold bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-emerald-300 dark:border-emerald-700">{serverOtp}</code>
                     </span>
                     <button
                       type="button"
                       onClick={() => setOtp(serverOtp)}
                       className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-bold cursor-pointer transition shadow-sm"
                     >
-                      Auto-fill OTP
+                      {t('autoFillOtp') || "Auto-fill OTP"}
                     </button>
                   </div>
 
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                        Enter 6-Digit Verification Code
+                        {t('enterOtpSent') || "Enter 6-Digit Verification Code"}
                       </label>
                       <TTSButton 
                         text={`Enter 6 digit verification code. ${otp ? `Currently entered: ${otp}` : 'No code entered yet.'}`} 
@@ -628,8 +630,8 @@ export default function PatientLogin() {
                     className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition shadow-md shadow-blue-600/30 cursor-pointer disabled:opacity-50"
                   >
                     {loading 
-                      ? (mode === 'register' ? "Creating Account..." : "Signing In...") 
-                      : (mode === 'register' ? "Verify OTP & Complete Registration" : "Verify OTP & Sign In")}
+                      ? (mode === 'register' ? (t('creatingAccount') || "Creating Account...") : (t('signingIn') || "Signing In...")) 
+                      : (mode === 'register' ? (t('verifyRegister') || "Verify OTP & Complete Registration") : (t('confirmVerifyOtp') || "Verify OTP & Sign In"))}
                   </motion.button>
                 </form>
               )}

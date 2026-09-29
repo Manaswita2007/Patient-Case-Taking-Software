@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Mic, Upload, FileText, CheckCircle, AlertTriangle, Languages, Square, Activity, ArrowLeft, ScanLine, Send, Download, Clock, Volume2, Printer, Loader2, FileDown, Thermometer, Settings, LayoutDashboard, LogOut, ChevronDown, X } from 'lucide-react';
+import { Mic, Upload, FileText, CheckCircle, AlertTriangle, Languages, Square, Activity, ArrowLeft, ScanLine, Send, Download, Clock, Volume2, Printer, Loader2, FileDown, Thermometer, Settings, LayoutDashboard, LogOut, ChevronDown, X, Eye, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAppContext } from '../context/AppContext';
@@ -273,10 +273,51 @@ export default function PatientDashboard() {
   };
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
+  const isRecordingIntentRef = useRef<boolean>(false);
+  const accumulatedTranscriptRef = useRef<string>('');
+  const sessionFinalRef = useRef<string>('');
+  const sessionInterimRef = useRef<string>('');
+  const lastEnglishTranscriptRef = useRef<string>('');
+  const recordingStartTimeRef = useRef<number>(0);
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const restartTimeoutRef = useRef<any>(null);
+  const [audioVolumeLevel, setAudioVolumeLevel] = useState<number>(0);
+
+  // Auto-focus chat input field when recording finishes or AI assistant finishes thinking
+  useEffect(() => {
+    if (!isRecording && !isThinking) {
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 120);
+      return () => clearTimeout(timer);
+    }
+  }, [isRecording, isThinking]);
+
+  // Clean up any active voice recording or mic streams on unmount
+  useEffect(() => {
+    return () => {
+      isRecordingIntentRef.current = false;
+      if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
+      if (recognitionRef.current) {
+        try { recognitionRef.current.abort(); } catch(e) {}
+      }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        try { mediaRecorderRef.current.stop(); } catch(e) {}
+      }
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach(t => t.stop());
+      }
+      if (audioContextRef.current) {
+        try { audioContextRef.current.close(); } catch(e) {}
+      }
+    };
+  }, []);
 
   // Review Intake Blood Group & Sex Modals
   const [showReviewBgModal, setShowReviewBgModal] = useState(false);
@@ -284,10 +325,38 @@ export default function PatientDashboard() {
   const [customReviewBg, setCustomReviewBg] = useState('');
   const [customReviewSex, setCustomReviewSex] = useState('');
 
+  // Document Preview Modal State
+  const [previewDoc, setPreviewDoc] = useState<{ name: string; base64: string; mimeType: string } | null>(null);
+  const [previewZoom, setPreviewZoom] = useState(1);
+
   // Voice recording states & timer
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [liveTranscript, setLiveTranscript] = useState('');
   const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
+
+  // Global unmount cleanup for audio, speech synthesis, & speech recognition
+  useEffect(() => {
+    return () => {
+      isRecordingIntentRef.current = false;
+      stopSpeech();
+      if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
+      if (recognitionRef.current) {
+        try { recognitionRef.current.abort(); } catch(e) {}
+        recognitionRef.current = null;
+      }
+      if (mediaRecorderRef.current) {
+        try {
+          if (mediaRecorderRef.current.state !== 'inactive') {
+            mediaRecorderRef.current.stop();
+          }
+        } catch(e) {}
+      }
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach(track => track.stop());
+        micStreamRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let timer: any = null;
@@ -339,109 +408,258 @@ export default function PatientDashboard() {
     setDocuments(prev => prev.filter((_, i) => i !== index));
   };
 
-  const startRecording = async () => {
-    setLiveTranscript('');
-    setVoiceNotice(null);
-
-    // 1. Try Browser Native SpeechRecognition for 100% Verbatim Accuracy
+  const launchNativeSpeechRecognition = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      try {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = LANG_CODE_MAP[language] || 'en-IN';
-        
-        let localTranscript = '';
-        recognition.onresult = (event: any) => {
-          let interim = '';
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-              localTranscript += event.results[i][0].transcript + ' ';
-            } else {
-              interim += event.results[i][0].transcript;
-            }
-          }
-          const textSoFar = (localTranscript + interim).trim();
-          if (textSoFar) {
-            setLiveTranscript(textSoFar);
-            setTextInput(textSoFar);
-          }
-        };
+    if (!SpeechRecognition) return false;
 
-        recognition.onerror = (e: any) => {
-          console.warn("Speech recognition error:", e);
-          setIsRecording(false);
-          if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-            setVoiceNotice("Microphone permission denied. Please allow microphone access in your browser.");
-          } else if (e.error === 'no-speech') {
-            setVoiceNotice("No speech detected. Please speak clearly into your mic.");
-          } else {
-            setVoiceNotice("Voice input stopped. You can speak again or type your symptoms.");
-          }
-          setTimeout(() => setVoiceNotice(null), 4000);
-        };
-
-        recognition.onend = () => {
-          setIsRecording(false);
-          const finalSpoken = localTranscript.trim();
-          if (finalSpoken) {
-            setTextInput(finalSpoken);
-            setLiveTranscript(finalSpoken);
-          }
-        };
-
-        recognitionRef.current = recognition;
-        recognition.start();
-        setIsRecording(true);
-        return;
-      } catch (err) {
-        console.warn("Native SpeechRecognition unavailable, falling back to MediaRecorder:", err);
-      }
-    }
-
-    // 2. MediaRecorder Fallback
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
+      if (recognitionRef.current) {
+        try { recognitionRef.current.abort(); } catch(e) {}
+        recognitionRef.current = null;
+      }
 
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          audioChunksRef.current.push(e.data);
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = LANG_CODE_MAP[language] || 'en-IN';
+      recognition.maxAlternatives = 1;
+
+      recognition.onresult = (event: any) => {
+        let interim = '';
+        let finalChunk = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalChunk += event.results[i][0].transcript + ' ';
+          } else {
+            interim += event.results[i][0].transcript;
+          }
+        }
+        if (finalChunk) {
+          sessionFinalRef.current += finalChunk;
+        }
+        sessionInterimRef.current = interim;
+        const fullText = (accumulatedTranscriptRef.current + sessionFinalRef.current + interim).trim();
+        if (fullText) {
+          setLiveTranscript(fullText);
+          setTextInput(fullText);
         }
       };
 
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        await processAudio(audioBlob);
-        stream.getTracks().forEach(track => track.stop());
+      recognition.onerror = (e: any) => {
+        const errType = e?.error;
+        if (errType === 'not-allowed' || errType === 'service-not-allowed') {
+          isRecordingIntentRef.current = false;
+          setIsRecording(false);
+          setVoiceNotice("Microphone permission denied. Please allow microphone access in your browser settings.");
+          setTimeout(() => setVoiceNotice(null), 4000);
+          return;
+        }
+        if (errType === 'audio-capture') {
+          isRecordingIntentRef.current = false;
+          setIsRecording(false);
+          setVoiceNotice("No microphone input found. Please verify your audio hardware.");
+          setTimeout(() => setVoiceNotice(null), 4000);
+          return;
+        }
+        // Non-fatal transient events ('no-speech', 'aborted', 'network') are normal when user pauses or stops
       };
 
-      mediaRecorder.start();
+      recognition.onend = () => {
+        // Commit text from this session
+        if (sessionFinalRef.current) {
+          accumulatedTranscriptRef.current += sessionFinalRef.current;
+          sessionFinalRef.current = '';
+        }
+        // CRITICAL: If user still intends to record, seamlessly spin up a FRESH SpeechRecognition session
+        // This ensures the AI assistant never automatically stops listening when user pauses or thinks!
+        if (isRecordingIntentRef.current) {
+          if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
+          restartTimeoutRef.current = setTimeout(() => {
+            if (isRecordingIntentRef.current) {
+              launchNativeSpeechRecognition();
+            }
+          }, 80);
+          return;
+        }
+        setIsRecording(false);
+        const finalSpoken = (accumulatedTranscriptRef.current || sessionInterimRef.current).trim();
+        if (finalSpoken) {
+          setTextInput(finalSpoken);
+          setLiveTranscript(finalSpoken);
+        }
+      };
+
+      recognitionRef.current = recognition;
+      try {
+        recognition.start();
+      } catch (startErr) {
+        // If already started or inactive, ignore gracefully
+      }
       setIsRecording(true);
+      return true;
     } catch (err) {
-      console.error("Error accessing microphone:", err);
-      setIsRecording(false);
-      setVoiceNotice("Microphone permission denied or unavailable. Please enable microphone permissions in your browser.");
-      setTimeout(() => setVoiceNotice(null), 4000);
+      return false;
     }
   };
 
+  const startRecording = async () => {
+    stopSpeech(); // Immediately silence any playing TTS so it doesn't feed into the microphone
+    setLiveTranscript('');
+    setTextInput('');
+    setVoiceNotice(null);
+    isRecordingIntentRef.current = true;
+    sessionFinalRef.current = '';
+    sessionInterimRef.current = '';
+    lastEnglishTranscriptRef.current = '';
+    recordingStartTimeRef.current = Date.now();
+    accumulatedTranscriptRef.current = '';
+
+    // Warm up microphone hardware & setup real-time audio volume visualizer
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      micStreamRef.current = stream;
+
+      try {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContextClass) {
+          const audioCtx = new AudioContextClass();
+          audioContextRef.current = audioCtx;
+          const source = audioCtx.createMediaStreamSource(stream);
+          const analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 64;
+          source.connect(analyser);
+          const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+          const sampleAudioLevel = () => {
+            if (!isRecordingIntentRef.current) return;
+            analyser.getByteFrequencyData(dataArray);
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+              sum += dataArray[i];
+            }
+            const avg = sum / dataArray.length;
+            setAudioVolumeLevel(Math.min(100, Math.round((avg / 128) * 100)));
+            requestAnimationFrame(sampleAudioLevel);
+          };
+          requestAnimationFrame(sampleAudioLevel);
+        }
+      } catch (audioErr) {
+        console.warn("AudioContext visualizer setup non-critical notice:", audioErr);
+      }
+    } catch (err) {
+      console.warn("Could not acquire mediaDevices audio stream:", err);
+    }
+
+    // 1. Start MediaRecorder on the microphone stream to capture audio chunks reliably
+    let stream = micStreamRef.current;
+    if (!stream || !stream.active) {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        micStreamRef.current = stream;
+      } catch (err) {
+        console.error("Microphone access error:", err);
+      }
+    }
+
+    if (stream) {
+      try {
+        let preferredMime = 'audio/webm';
+        if (typeof MediaRecorder.isTypeSupported === 'function') {
+          if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+            preferredMime = 'audio/webm;codecs=opus';
+          } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+            preferredMime = 'audio/mp4';
+          } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
+            preferredMime = 'audio/ogg';
+          }
+        }
+        const mediaRecorder = new MediaRecorder(stream, { mimeType: preferredMime });
+        mediaRecorderRef.current = mediaRecorder;
+        audioChunksRef.current = [];
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) {
+            audioChunksRef.current.push(e.data);
+          }
+        };
+
+        mediaRecorder.onstop = async () => {
+          // If native speech recognition already transcribed words, we keep them.
+          // BUT if native recognition was silent or blocked in iframe, transcribe with AI STT!
+          const currentWords = (accumulatedTranscriptRef.current || sessionFinalRef.current || liveTranscript || textInput).trim();
+          const recordedDurationMs = Date.now() - recordingStartTimeRef.current;
+          if (!currentWords && audioChunksRef.current.length > 0 && recordedDurationMs >= 500) {
+            const audioBlob = new Blob(audioChunksRef.current, { type: preferredMime });
+            await processAudio(audioBlob);
+          }
+        };
+
+        mediaRecorder.start(200);
+        setIsRecording(true);
+      } catch (recErr) {
+        console.warn("MediaRecorder start notice:", recErr);
+      }
+    }
+
+    // 2. Concurrently start native SpeechRecognition for instant, real-time live typing
+    launchNativeSpeechRecognition();
+    setIsRecording(true);
+  };
+
   const stopRecording = () => {
+    isRecordingIntentRef.current = false;
     setIsRecording(false);
+    setAudioVolumeLevel(0);
+
+    if (sessionFinalRef.current) {
+      accumulatedTranscriptRef.current += sessionFinalRef.current;
+    }
+    if (sessionInterimRef.current && !accumulatedTranscriptRef.current.includes(sessionInterimRef.current)) {
+      accumulatedTranscriptRef.current += sessionInterimRef.current + ' ';
+    }
+
+    const finalSpoken = (accumulatedTranscriptRef.current || sessionFinalRef.current || liveTranscript).trim();
+    if (finalSpoken) {
+      setTextInput(finalSpoken);
+      setLiveTranscript(finalSpoken);
+    }
+
+    if (restartTimeoutRef.current) {
+      clearTimeout(restartTimeoutRef.current);
+      restartTimeoutRef.current = null;
+    }
     if (recognitionRef.current) {
       try {
-        recognitionRef.current.stop();
+        if (typeof recognitionRef.current.stop === 'function') {
+          recognitionRef.current.stop();
+        } else {
+          recognitionRef.current.abort();
+        }
       } catch(e) {}
+      recognitionRef.current = null;
     }
     if (mediaRecorderRef.current) {
       try {
+        if (mediaRecorderRef.current.state === 'recording') {
+          mediaRecorderRef.current.requestData();
+        }
         if (mediaRecorderRef.current.state !== 'inactive') {
           mediaRecorderRef.current.stop();
         }
       } catch(e) {}
+    }
+    // Clean up tracks after onstop has captured final chunks
+    setTimeout(() => {
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach(track => track.stop());
+        micStreamRef.current = null;
+      }
+    }, 500);
+    if (audioContextRef.current) {
+      try {
+        audioContextRef.current.close();
+      } catch(e) {}
+      audioContextRef.current = null;
     }
   };
 
@@ -451,33 +669,42 @@ export default function PatientDashboard() {
       const reader = new FileReader();
       reader.readAsDataURL(audioBlob);
       reader.onloadend = async () => {
-        const base64AudioMessage = (reader.result as string).split(',')[1];
-        
-        const res = await fetch('/api/bhashini/asr', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            audioBase64: base64AudioMessage,
-            language: currentFullLanguage
-          })
-        });
+        try {
+          const base64AudioMessage = (reader.result as string).split(',')[1];
+          const res = await fetch('/api/bhashini/asr', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              audioBase64: base64AudioMessage,
+              language: currentFullLanguage,
+              mimeType: audioBlob.type || 'audio/webm'
+            })
+          });
 
-        if (res.ok) {
-          const data = await res.json();
-          // Take ONLY what is said verbatim; do NOT fabricate anything
-          const verbatim = (data.transcript || '').trim();
-          if (verbatim) {
-            setTextInput(verbatim);
-            setLiveTranscript(verbatim);
-          } else {
-            setVoiceNotice(t('noSpeechDetected') || "No voice detected. Please speak clearly.");
-            setTimeout(() => setVoiceNotice(null), 4000);
+          if (res.ok) {
+            const data = await res.json();
+            const verbatim = (data.transcript || data.english || '').trim();
+            const translatedEnglish = (data.english || data.transcript || '').trim();
+            if (verbatim) {
+              setTextInput(verbatim);
+              setLiveTranscript(verbatim);
+              accumulatedTranscriptRef.current = verbatim;
+              lastEnglishTranscriptRef.current = translatedEnglish;
+            } else {
+              const currentExisting = (accumulatedTranscriptRef.current || textInput || liveTranscript).trim();
+              const recordedDurationMs = Date.now() - recordingStartTimeRef.current;
+              // Only alert if no words exist in input and recording was deliberate (> 1500ms)
+              if (!currentExisting && recordedDurationMs > 1500) {
+                setVoiceNotice(t('noSpeechDetected') || "No voice detected. Please speak clearly.");
+                setTimeout(() => setVoiceNotice(null), 3500);
+              }
+            }
           }
-        } else {
-          setVoiceNotice("Transcription error. Please type or try again.");
-          setTimeout(() => setVoiceNotice(null), 3000);
+        } catch (fetchErr) {
+          console.warn("Transcription non-critical notice:", fetchErr);
+        } finally {
+          setIsTranscribing(false);
         }
-        setIsTranscribing(false);
       };
     } catch (error) {
       console.error("Transcription error:", error);
@@ -495,9 +722,14 @@ export default function PatientDashboard() {
 
   const handleTextSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isRecording) {
+      stopRecording();
+    }
     if (textInput.trim()) {
-      handleUserMessage(textInput.trim(), textInput.trim());
+      const eng = lastEnglishTranscriptRef.current || textInput.trim();
+      handleUserMessage(textInput.trim(), eng);
       setTextInput('');
+      lastEnglishTranscriptRef.current = '';
     }
   };
 
@@ -529,16 +761,44 @@ export default function PatientDashboard() {
       const data = await res.json();
       if (res.ok) {
         setMessages(prev => [...prev, { id: 'msg-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9), role: 'assistant', text: data.reply, englishText: data.englishReply }]);
+        if (data.reply) {
+          speakMessage(data.reply);
+        }
         if (data.isStopRequested || data.completed) {
           setStopRequested(true);
         }
       } else {
-        const errorMsg = data?.error || "The clinical assistant is currently busy. Please wait a moment and try again, or continue describing your symptoms.";
-        setMessages(prev => [...prev, { id: 'msg-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9), role: 'assistant', text: errorMsg, englishText: errorMsg }]);
+        const userCount = newMessages.filter(m => m.role === 'user').length;
+        let fallbackText = "Thank you. Could you share how long you have experienced these symptoms and if you are currently taking any regular medications?";
+        if (currentFullLanguage === 'Hindi') {
+          fallbackText = userCount >= 3 
+            ? "धन्यवाद। हमने आपके लक्षणों को रिकॉर्ड कर लिया है। आप रिपोर्ट की समीक्षा करने के लिए 'समाप्त करें और रिपोर्ट बनाएं' पर टैप कर सकते हैं।" 
+            : "धन्यवाद। कृपया बताएं कि आप इन लक्षणों का अनुभव कब से कर रहे हैं और क्या आप कोई दवा ले रहे हैं?";
+        } else if (currentFullLanguage === 'Bengali') {
+          fallbackText = userCount >= 3
+            ? "ধন্যবাদ। আমরা আপনার লক্ষণগুলি রেকর্ড করেছি। আপনি এখন পর্যালোচনা করতে 'শেষ করুন এবং রিপোর্ট তৈরি করুন'-এ ট্যাপ করতে পারেন।"
+            : "ধন্যবাদ। আপনি কতদিন ধরে এই লক্ষণগুলি অনুভব করছেন এবং আপনি কোনো ওষুধ খাচ্ছেন কিনা অনুগ্রহ করে জানান।";
+        } else if (userCount >= 3) {
+          fallbackText = "Thank you. We have recorded your symptoms. You can tap Finish and Generate Report to review and submit to your doctor.";
+        }
+        setMessages(prev => [...prev, { id: 'msg-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9), role: 'assistant', text: fallbackText, englishText: fallbackText }]);
       }
     } catch (e) {
-      console.error(e);
-      setMessages(prev => [...prev, { id: 'msg-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9), role: 'assistant', text: "Connection error. Please try sending your message again.", englishText: "Connection error. Please try sending your message again." }]);
+      console.warn("AI chat fetch error:", e);
+      const userCount = newMessages.filter(m => m.role === 'user').length;
+      let fallbackText = "Thank you. Could you share how long you have experienced these symptoms and if you are currently taking any regular medications?";
+      if (currentFullLanguage === 'Hindi') {
+        fallbackText = userCount >= 3 
+          ? "धन्यवाद। हमने आपके लक्षणों को रिकॉर्ड कर लिया है। आप रिपोर्ट की समीक्षा करने के लिए 'समाप्त करें और रिपोर्ट बनाएं' पर टैप कर सकते हैं।" 
+          : "धन्यवाद। कृपया बताएं कि आप इन लक्षणों का अनुभव कब से कर रहे हैं और क्या आप कोई दवा ले रहे हैं?";
+      } else if (currentFullLanguage === 'Bengali') {
+        fallbackText = userCount >= 3
+          ? "ধন্যবাদ। আমরা আপনার লক্ষণগুলি রেকর্ড করেছি। আপনি এখন পর্যালোচনা করতে 'শেষ করুন এবং রিপোর্ট তৈরি করুন'-এ ট্যাপ করতে পারেন।"
+          : "ধন্যবাদ। আপনি কতদিন ধরে এই লক্ষণগুলি অনুভব করছেন এবং আপনি কোনো ওষুধ খাচ্ছেন কিনা অনুগ্রহ করে জানান।";
+      } else if (userCount >= 3) {
+        fallbackText = "Thank you. We have recorded your symptoms. You can tap Finish and Generate Report to review and submit to your doctor.";
+      }
+      setMessages(prev => [...prev, { id: 'msg-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9), role: 'assistant', text: fallbackText, englishText: fallbackText }]);
     }
     setIsThinking(false);
   };
@@ -1322,7 +1582,7 @@ export default function PatientDashboard() {
                   <FileText className="w-5 h-5" />
                 </div>
                 <div>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-teal-700 dark:text-teal-400 bg-teal-100 dark:bg-teal-900/60 px-2 py-0.5 rounded-md">
+                  <span className="text-[10px] font-black uppercase tracking-normal text-teal-700 dark:text-teal-400 bg-teal-100 dark:bg-teal-900/60 px-2 py-0.5 rounded-md">
                     Doctor Signed Prescription Available
                   </span>
                   <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
@@ -1335,10 +1595,10 @@ export default function PatientDashboard() {
                 target="_blank"
                 rel="noopener noreferrer"
                 download="Doctor_Prescription.pdf"
-                className="shrink-0 px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl shadow flex items-center gap-1.5 transition cursor-pointer"
+                className="shrink-0 px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl shadow flex items-center gap-1.5 transition cursor-pointer tracking-normal"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>Download Prescription</span>
+                <span className="tracking-normal">Download Prescription</span>
               </a>
             </motion.div>
           )}
@@ -1553,8 +1813,7 @@ export default function PatientDashboard() {
   }
 
   return (
-    <div className="flex-1 min-h-0 w-full overflow-y-auto bg-slate-50 dark:bg-slate-900 relative transition-colors">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-50/50 dark:from-blue-900/10 via-slate-50 dark:via-slate-900 to-slate-50 dark:to-slate-900 pointer-events-none"></div>
+    <div className="flex-1 min-h-0 w-full overflow-y-auto bg-transparent relative transition-colors">
 
       {loading && (
         <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-md flex flex-col items-center justify-center p-6 text-white text-center">
@@ -1710,9 +1969,9 @@ export default function PatientDashboard() {
 
             {/* Voice Notice (e.g. no speech detected) */}
             {voiceNotice && (
-              <div className="mx-4 mt-2 p-2.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-xl text-rose-600 dark:text-rose-400 text-xs font-semibold flex items-center justify-between">
-                <span>{voiceNotice}</span>
-                <button onClick={() => setVoiceNotice(null)} className="text-slate-400 hover:text-slate-600">
+              <div className="mx-4 mt-2 p-2.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-xl text-rose-600 dark:text-rose-400 text-xs font-semibold tracking-normal leading-normal flex items-center justify-between">
+                <span className="tracking-normal leading-normal">{voiceNotice}</span>
+                <button type="button" onClick={() => setVoiceNotice(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer ml-2">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -1764,44 +2023,69 @@ export default function PatientDashboard() {
                       </div>
                     </div>
 
-                    {/* LIVE VERBATIM SOUND FREQUENCY VISUALIZER */}
-                    <div className="flex-1 flex items-center justify-center gap-1 h-8 max-w-[160px] sm:max-w-xs mx-auto">
-                      {[16, 26, 12, 30, 20, 28, 14, 32, 18, 28, 12, 24, 16, 30, 14, 22].map((h, i) => (
-                        <motion.div
-                          key={i}
-                          animate={{
-                            height: [6, h, 4, h * 0.9, 6],
-                            opacity: [0.4, 1, 0.4]
-                          }}
-                          transition={{
-                            duration: 0.65,
-                            repeat: Infinity,
-                            delay: i * 0.04,
-                            ease: "easeInOut"
-                          }}
-                          className="w-1 bg-gradient-to-t from-red-600 via-rose-500 to-amber-400 rounded-full"
-                        />
-                      ))}
+                    {/* LIVE VERBATIM SOUND & TRANSCRIPT DISPLAY */}
+                    <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-2">
+                      {liveTranscript.trim() ? (
+                        <div className="w-full text-center truncate">
+                          <span className="text-xs font-bold text-slate-900 dark:text-white truncate block">
+                            "{liveTranscript.trim()}"
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center gap-1 h-6 w-full max-w-[170px] sm:max-w-xs mx-auto">
+                          {[16, 26, 12, 30, 20, 28, 14, 32, 18, 28, 12, 24, 16, 30, 14, 22].map((h, i) => {
+                            const isSoundActive = audioVolumeLevel > 5;
+                            const dynamicHeight = isSoundActive 
+                              ? Math.min(24, Math.max(4, Math.round(h * Math.min(1.4, audioVolumeLevel / 25)))) 
+                              : 3;
+                            return (
+                              <motion.div
+                                key={i}
+                                animate={{
+                                  height: isSoundActive ? [dynamicHeight * 0.5, dynamicHeight, dynamicHeight * 0.7] : 3,
+                                  opacity: isSoundActive ? [0.7, 1, 0.7] : 0.3
+                                }}
+                                transition={{
+                                  duration: isSoundActive ? 0.25 + (i % 4) * 0.05 : 0.8,
+                                  repeat: Infinity,
+                                  ease: "easeInOut"
+                                }}
+                                className={`w-1 rounded-full transition-all ${
+                                  isSoundActive 
+                                    ? 'bg-gradient-to-t from-red-600 via-rose-500 to-amber-400' 
+                                    : 'bg-slate-400 dark:bg-slate-600'
+                                }`}
+                              />
+                            );
+                          })}
+                        </div>
+                      )}
+                      <span className="text-[9px] font-semibold text-red-600/90 dark:text-red-300/90 truncate hidden sm:inline">
+                        {liveTranscript.trim() ? "Live Voice Captured" : audioVolumeLevel > 5 ? "Sound Detected • Capturing Voice" : "Ready • Speak your symptoms clearly"}
+                      </span>
                     </div>
 
                     {/* ACTIONS */}
                     <div className="flex items-center gap-1.5 shrink-0">
-                      {liveTranscript.trim() && (
+                      {(liveTranscript.trim() || textInput.trim()) && (
                         <button
                           type="button"
                           onClick={() => {
+                            const msgToSend = (liveTranscript.trim() || textInput.trim() || accumulatedTranscriptRef.current).trim();
+                            const engToSend = lastEnglishTranscriptRef.current || msgToSend;
                             stopRecording();
-                            if (liveTranscript.trim()) {
-                              handleUserMessage(liveTranscript.trim(), liveTranscript.trim());
+                            if (msgToSend) {
+                              handleUserMessage(msgToSend, engToSend);
                               setTextInput('');
                               setLiveTranscript('');
+                              lastEnglishTranscriptRef.current = '';
                             }
                           }}
                           className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm cursor-pointer flex items-center gap-1"
                           title="Send spoken words immediately"
                         >
                           <CheckCircle className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Send</span>
+                          <span className="hidden sm:inline">Send Voice</span>
                         </button>
                       )}
 
@@ -1815,12 +2099,18 @@ export default function PatientDashboard() {
                       </button>
                     </div>
                   </div>
+                ) : isTranscribing ? (
+                  <div className="flex-1 flex items-center gap-2.5 bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl px-4 h-14 text-sm font-semibold text-blue-600 dark:text-blue-400">
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                    <span>Processing & transcribing voice input...</span>
+                  </div>
                 ) : (
                   <input 
+                    ref={inputRef}
                     type="text" 
                     value={textInput}
                     onChange={e => setTextInput(e.target.value)}
-                    placeholder={t('typeResponse')}
+                    placeholder={t('typeResponse') || "Type your response or click mic to speak..."}
                     className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 outline-none focus:ring-2 focus:ring-blue-500 dark:text-white h-14 text-sm font-semibold"
                   />
                 )}
@@ -1833,9 +2123,12 @@ export default function PatientDashboard() {
                   <Send className="w-5 h-5" />
                 </button>
               </form>
-              <div className="mt-4 text-center">
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-tight">
-                  {t('aiDisclaimer') || 'Disclaimer: This AI assistant is for informational purposes only and does not provide medical advice or diagnosis. Always consult with a qualified healthcare professional.'}
+              <div className="mt-4 text-center max-w-xl mx-auto px-2">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed font-normal">
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">Clinical Disclaimer: </span>
+                  {t('aiDisclaimer') && t('aiDisclaimer') !== 'aiDisclaimer'
+                    ? t('aiDisclaimer')
+                    : "HealthPoint's intelligent intake assistant helps organize symptoms and vitals for your attending physician. It does not replace direct physician diagnosis or emergency medical care."}
                 </p>
               </div>
             </div>
@@ -1879,15 +2172,28 @@ export default function PatientDashboard() {
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 10 }}
-                        className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl"
+                        className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl"
                       >
-                        <div className="flex items-center overflow-hidden gap-3">
-                          <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded flex items-center justify-center shrink-0">
+                        <div 
+                          onClick={() => {
+                            setPreviewZoom(1);
+                            setPreviewDoc({
+                              name: doc.name,
+                              base64: doc.base64.startsWith('data:') ? doc.base64 : `data:${doc.mimeType};base64,${doc.base64}`,
+                              mimeType: doc.mimeType
+                            });
+                          }}
+                          className="flex items-center overflow-hidden gap-3 flex-1 min-w-0 cursor-pointer group"
+                        >
+                          <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                             <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                           </div>
-                          <span className="truncate text-sm font-semibold text-slate-700 dark:text-slate-300">{doc.name}</span>
+                          <span className="truncate text-sm font-semibold text-slate-700 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{doc.name}</span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 shrink-0">
+                            Preview
+                          </span>
                         </div>
-                        <button onClick={() => removeDocument(idx)} className="text-xs font-bold text-slate-400 hover:text-red-600 uppercase tracking-widest ml-4 transition-colors">{t('remove')}</button>
+                        <button onClick={() => removeDocument(idx)} className="text-xs font-bold text-slate-400 hover:text-red-600 uppercase tracking-normal ml-4 transition-colors cursor-pointer">{t('remove')}</button>
                       </motion.div>
                     ))}
                   </motion.div>
@@ -1979,6 +2285,98 @@ export default function PatientDashboard() {
                 >
                   Yes, Exit
                 </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+        {/* Document Preview Modal with Zoom In/Out */}
+        {previewDoc && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 10 }} 
+              animate={{ scale: 1, y: 0 }} 
+              exit={{ scale: 0.95, y: 10 }}
+              className="bg-white dark:bg-slate-900 rounded-2xl max-w-3xl w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col max-h-[90vh]"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-700 gap-3">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white truncate flex-1">
+                  {previewDoc.name}
+                </h3>
+
+                {/* Zoom Controls */}
+                <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewZoom(z => Math.max(0.5, Math.round((z - 0.25) * 100) / 100))}
+                    className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition cursor-pointer"
+                    title="Zoom Out"
+                  >
+                    <ZoomOut className="w-4 h-4" />
+                  </button>
+                  <span className="text-[11px] font-bold font-mono px-1.5 text-slate-700 dark:text-slate-200 min-w-[42px] text-center">
+                    {Math.round(previewZoom * 100)}%
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewZoom(z => Math.min(3.0, Math.round((z + 0.25) * 100) / 100))}
+                    className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition cursor-pointer"
+                    title="Zoom In"
+                  >
+                    <ZoomIn className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewZoom(1)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-white dark:hover:bg-slate-700 transition cursor-pointer"
+                    title="Reset Zoom"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <button 
+                  onClick={() => setPreviewDoc(null)}
+                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-auto my-4 flex flex-col justify-center min-h-[300px] bg-slate-50 dark:bg-slate-800 rounded-xl p-3">
+                <div 
+                  className="w-full flex items-center justify-center transition-transform duration-200 origin-center"
+                  style={{ transform: `scale(${previewZoom})` }}
+                >
+                  {previewDoc.base64 && (previewDoc.base64.startsWith('data:image/') || previewDoc.mimeType?.includes('image')) ? (
+                    <img src={previewDoc.base64} alt={previewDoc.name} className="max-h-[60vh] object-contain rounded-lg shadow-sm mx-auto select-none" />
+                  ) : previewDoc.base64 && previewDoc.base64.startsWith('data:application/pdf') ? (
+                    <iframe 
+                      src={previewDoc.base64} 
+                      title={previewDoc.name} 
+                      className="w-full h-[60vh] rounded-lg border-0" 
+                    />
+                  ) : (
+                    <div className="text-center p-8 text-slate-500">
+                      <FileText className="w-12 h-12 mx-auto mb-2 text-slate-400" />
+                      <p className="text-sm font-semibold">{previewDoc.name}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <a
+                  href={previewDoc.base64}
+                  download={previewDoc.name}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm"
+                >
+                  <Download className="w-3.5 h-3.5" /> Download Document
+                </a>
               </div>
             </motion.div>
           </motion.div>

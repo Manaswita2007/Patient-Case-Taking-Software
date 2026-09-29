@@ -4,7 +4,8 @@ import {
   AlertTriangle, Save, FileText, FileDown, Printer, Activity, History, 
   Stethoscope, Leaf, Edit2, CheckCircle2, Download, ShieldAlert, Upload, 
   Eye, FileCheck, Phone, Mail, Send, MessageSquare, AlertCircle, Heart, 
-  Calendar, Check, User, Clock, Plus, Minus, Gauge
+  Calendar, Check, User, Clock, Plus, Minus, Gauge,
+  ZoomIn, ZoomOut, RotateCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { downloadPatientReportPDF, downloadChatHistoryPDF, ReportPDFData } from '../utils/pdfGenerator';
@@ -94,6 +95,7 @@ export default function ReportView({ report, onUpdate }: ReportViewProps) {
 
   // Document Preview Modal State
   const [previewDoc, setPreviewDoc] = useState<{ name: string; base64: string; mimeType?: string } | null>(null);
+  const [previewZoom, setPreviewZoom] = useState(1);
 
   useEffect(() => {
     setAllopathyDiagnosis(report.allopathyDiagnosis || report.diagnosis || '');
@@ -1021,22 +1023,25 @@ export default function ReportView({ report, onUpdate }: ReportViewProps) {
 
             <div className="flex items-center gap-1.5">
               <button
-                onClick={() => setPreviewDoc({
-                  name: report.doctorPrescription.fileName,
-                  base64: report.doctorPrescription.fileData,
-                  mimeType: report.doctorPrescription.mimeType
-                })}
-                className="px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 rounded-md text-[11px] font-bold border border-emerald-200 dark:border-emerald-800 transition-colors flex items-center gap-1"
+                onClick={() => {
+                  setPreviewZoom(1);
+                  setPreviewDoc({
+                    name: report.doctorPrescription.fileName,
+                    base64: report.doctorPrescription.fileData,
+                    mimeType: report.doctorPrescription.mimeType
+                  });
+                }}
+                className="px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 rounded-md text-[11px] font-bold border border-emerald-200 dark:border-emerald-800 transition-colors flex items-center gap-1 tracking-normal"
               >
-                <Eye className="w-3 h-3" /> Preview
+                <Eye className="w-3 h-3" /> <span className="tracking-normal">Preview</span>
               </button>
               {report.doctorPrescription.fileData && (
                 <a
                   href={report.doctorPrescription.fileData}
                   download={report.doctorPrescription.fileName}
-                  className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[11px] font-bold shadow-xs transition-colors flex items-center gap-1"
+                  className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[11px] font-bold shadow-xs transition-colors flex items-center gap-1 tracking-normal"
                 >
-                  <Download className="w-3 h-3" /> Download
+                  <Download className="w-3 h-3" /> <span className="tracking-normal">Download</span>
                 </a>
               )}
             </div>
@@ -1047,7 +1052,7 @@ export default function ReportView({ report, onUpdate }: ReportViewProps) {
         <div className="bg-white dark:bg-slate-900 p-3.5 rounded-lg border border-emerald-100 dark:border-slate-800 space-y-2.5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider block mb-1">
+              <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-normal block mb-1">
                 Select Prescription File (PDF or Image)
               </label>
               <input 
@@ -1142,28 +1147,64 @@ export default function ReportView({ report, onUpdate }: ReportViewProps) {
               exit={{ scale: 0.95, y: 10 }}
               className="bg-white dark:bg-slate-900 rounded-2xl max-w-3xl w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 flex flex-col max-h-[90vh]"
             >
-              <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-700">
-                <h3 className="text-base font-bold text-slate-900 dark:text-white truncate">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-700 gap-3">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white truncate flex-1">
                   {previewDoc.name}
                 </h3>
+                
+                {/* Zoom In & Out Controls */}
+                <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewZoom(z => Math.max(0.5, Math.round((z - 0.25) * 100) / 100))}
+                    className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition cursor-pointer"
+                    title="Zoom Out"
+                  >
+                    <ZoomOut className="w-4 h-4" />
+                  </button>
+                  <span className="text-[11px] font-bold font-mono px-1.5 text-slate-700 dark:text-slate-200 min-w-[42px] text-center">
+                    {Math.round(previewZoom * 100)}%
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewZoom(z => Math.min(3.0, Math.round((z + 0.25) * 100) / 100))}
+                    className="p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition cursor-pointer"
+                    title="Zoom In"
+                  >
+                    <ZoomIn className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewZoom(1)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-white dark:hover:bg-slate-700 transition cursor-pointer"
+                    title="Reset Zoom"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
                 <button 
                   onClick={() => setPreviewDoc(null)}
-                  className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold hover:bg-slate-200"
+                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
                 >
                   Close
                 </button>
               </div>
 
               <div className="flex-1 overflow-auto my-4 flex flex-col justify-center min-h-[300px] bg-slate-50 dark:bg-slate-800 rounded-xl p-3">
-                {previewDoc.base64 && (previewDoc.base64.startsWith('data:image/') || previewDoc.mimeType?.includes('image')) ? (
-                  <img src={previewDoc.base64} alt={previewDoc.name} className="max-h-[60vh] object-contain rounded-lg shadow-sm mx-auto" />
-                ) : previewDoc.base64 && previewDoc.base64.startsWith('data:application/pdf') ? (
-                  <iframe 
-                    src={previewDoc.base64} 
-                    title={previewDoc.name} 
-                    className="w-full h-[60vh] rounded-lg border-0" 
-                  />
-                ) : (
+                <div 
+                  className="w-full flex items-center justify-center transition-transform duration-200 origin-center"
+                  style={{ transform: `scale(${previewZoom})` }}
+                >
+                  {previewDoc.base64 && (previewDoc.base64.startsWith('data:image/') || previewDoc.mimeType?.includes('image')) ? (
+                    <img src={previewDoc.base64} alt={previewDoc.name} className="max-h-[60vh] object-contain rounded-lg shadow-sm mx-auto select-none" />
+                  ) : previewDoc.base64 && previewDoc.base64.startsWith('data:application/pdf') ? (
+                    <iframe 
+                      src={previewDoc.base64} 
+                      title={previewDoc.name} 
+                      className="w-full h-[60vh] rounded-lg border-0" 
+                    />
+                  ) : (
                   /* Clinical Blood Test & Diagnostic Report Inspection View */
                   <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-700 space-y-3">
                     <div className="flex items-center justify-between pb-2.5 border-b border-slate-200 dark:border-slate-700">
@@ -1217,6 +1258,7 @@ export default function ReportView({ report, onUpdate }: ReportViewProps) {
                     </div>
                   </div>
                 )}
+                </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">

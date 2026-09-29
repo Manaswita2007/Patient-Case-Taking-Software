@@ -153,6 +153,21 @@ const translations = {
     iAgreeToTerms: "I have read and accept the Terms of Service",
     iAgreeToPrivacy: "I consent to share my data and have read the Privacy Policy",
     close: "Close",
+    registerUsing: "Register Using",
+    signInUsing: "Sign In Using",
+    activeSessionFound: "Active patient session found",
+    resume: "Resume",
+    startFresh: "Start Fresh",
+    change: "Change",
+    autoFillOtp: "Auto-fill OTP",
+    creatingAccount: "Creating Account...",
+    signingIn: "Signing In...",
+    verifyRegister: "Verify OTP & Complete Registration",
+    consentLegal: "Consent & Legal Acknowledgement",
+    dataPrivacyNotice: "Note: Your medical records are encrypted and will not be used to train AI models.",
+    aiDisclaimer: "Clinical AI Disclaimer: HealthPoint's intelligent intake assistant helps organize symptoms and vitals for your attending physician. It does not replace direct physician diagnosis or emergency medical care.",
+    otpSentTo: "OTP Sent to",
+    verificationCode: "Verification Code:",
 
     // Patient Dashboard & Home
     patientDashboard: "Patient Dashboard",
@@ -295,7 +310,8 @@ const translations = {
     accurateDiagnosticTimeline: "Accurate Diagnostic Timeline",
     accurateDiagnosticTimelineDesc: "Doctors instantly see prior blood tests, allergies, and surgical histories, preventing dangerous drug interactions.",
     accessibleViaMobileEmail: "Accessible via Mobile or Email",
-    accessibleViaMobileEmailDesc: "Linked securely to your mobile number and Aadhaar/Email for painless one-touch OTP recovery anywhere in India."
+    accessibleViaMobileEmailDesc: "Linked securely to your mobile number and Aadhaar/Email for painless one-touch OTP recovery anywhere in India.",
+    noSpeechDetected: "No voice detected. Please speak clearly."
   },
   hi: {
     appTitle: "HealthPoint (हेल्थपॉइंट)",
@@ -422,6 +438,21 @@ const translations = {
     iAgreeToTerms: "मैं सेवा की शर्तों को स्वीकार करता/करती हूं",
     iAgreeToPrivacy: "मैं अपने डेटा को साझा करने की सहमति देता/देती हूं",
     close: "बंद करें",
+    registerUsing: "इसके द्वारा पंजीकरण करें",
+    signInUsing: "इसके द्वारा साइन इन करें",
+    activeSessionFound: "सक्रिय मरीज सत्र मिला",
+    resume: "जारी रखें",
+    startFresh: "नया शुरू करें",
+    change: "बदलें",
+    autoFillOtp: "स्वचालित रूप से OTP भरें",
+    creatingAccount: "खाता बनाया जा रहा है...",
+    signingIn: "साइन इन हो रहा है...",
+    verifyRegister: "OTP सत्यापित करें और पंजीकरण पूरा करें",
+    consentLegal: "सहमति और कानूनी स्वीकृति",
+    dataPrivacyNotice: "नोट: आपके मेडिकल रिकॉर्ड एन्क्रिप्टेड हैं और इनका उपयोग AI मॉडल को प्रशिक्षित करने के लिए नहीं किया जाएगा।",
+    aiDisclaimer: "क्लिनिकल अस्वीकरण: हेल्थपॉइंट का यह एआई सहायक आपके डॉक्टर के लिए लक्षणों और महत्वपूर्ण संकेतों को व्यवस्थित करता है। यह चिकित्सीय सलाह या आपातकालीन देखभाल का विकल्प नहीं है।",
+    otpSentTo: "OTP भेजा गया:",
+    verificationCode: "सत्यापन कोड:",
 
     // Patient Dashboard & Home
     patientDashboard: "मरीज डैशबोर्ड",
@@ -564,7 +595,8 @@ const translations = {
     accurateDiagnosticTimeline: "सटीक नैदानिक समयरेखा",
     accurateDiagnosticTimelineDesc: "डॉक्टर तुरंत पुराने रक्त परीक्षण, एलर्जी और सर्जिकल इतिहास देख सकते हैं।",
     accessibleViaMobileEmail: "मोबाइल या ईमेल द्वारा सुलभ",
-    accessibleViaMobileEmailDesc: "भारत में कहीं भी आसान OTP पुनर्प्राप्ति के लिए आपके मोबाइल नंबर और आधार/ईमेल से सुरक्षित रूप से जुड़ा हुआ।"
+    accessibleViaMobileEmailDesc: "भारत में कहीं भी आसान OTP पुनर्प्राप्ति के लिए आपके मोबाइल नंबर और आधार/ईमेल से सुरक्षित रूप से जुड़ा हुआ।",
+    noSpeechDetected: "कोई आवाज़ नहीं पहचानी गई। कृपया स्पष्ट बोलें।"
   },
   bn: {
     appTitle: "HealthPoint (হেলথপয়েন্ট)",
@@ -691,6 +723,21 @@ const translations = {
     iAgreeToTerms: "আমি পরিষেবার শর্তাবলী মেনে নিচ্ছি",
     iAgreeToPrivacy: "আমি আমার তথ্য শেয়ার করতে সম্মতি জানাচ্ছি",
     close: "বন্ধ করুন",
+    registerUsing: "এর মাধ্যমে নিবন্ধন করুন",
+    signInUsing: "এর মাধ্যমে সাইন ইন করুন",
+    activeSessionFound: "সক্রিয় রোগীর সেশন পাওয়া গেছে",
+    resume: "চালিয়ে যান",
+    startFresh: "নতুন করে শুরু করুন",
+    change: "পরিবর্তন",
+    autoFillOtp: "স্বয়ংক্রিয়ভাবে OTP পূরণ করুন",
+    creatingAccount: "অ্যাকাউন্ট তৈরি হচ্ছে...",
+    signingIn: "সাইন ইন হচ্ছে...",
+    verifyRegister: "OTP যাচাই করুন এবং নিবন্ধন সম্পন্ন করুন",
+    consentLegal: "সম্মতি এবং আইনি স্বীকৃতি",
+    dataPrivacyNotice: "নোট: আপনার মেডিকেল রেকর্ডগুলি এনক্রিপ্ট করা হয়েছে এবং AI প্রশিক্ষণের জন্য ব্যবহার করা হবে না।",
+    aiDisclaimer: "ক্লিনিক্যাল দাবিত্যাগ: হেলথপয়েন্টের এআই সহকারী আপনার চিকিৎসকের জন্য উপসর্গ ও গুরুত্বপূর্ণ লক্ষণ সংগঠিত করে। এটি চিকিৎসকের সরাসরি পরামর্শ বা জরুরি চিকিৎসার বিকল্প নয়।",
+    otpSentTo: "OTP পাঠানো হয়েছে:",
+    verificationCode: "যাচাইকরণ কোড:",
 
     // Patient Dashboard & Home
     patientDashboard: "রোগী ড্যাশবোর্ড",
@@ -833,7 +880,8 @@ const translations = {
     accurateDiagnosticTimeline: "নির্ভুল ডায়াগনস্টিক টাইমলাইন",
     accurateDiagnosticTimelineDesc: "ডাক্তাররা তাত্ক্ষণিকভাবে পূর্ববর্তী রক্ত পরীক্ষা, অ্যালার্জি ও অস্ত্রোপচারের ইতিহাস দেখতে পান।",
     accessibleViaMobileEmail: "মোবাইল বা ইমেলের মাধ্যমে অ্যাক্সেসযোগ্য",
-    accessibleViaMobileEmailDesc: "ভারতে যেকোনো জায়গায় সহজ ওটিপি পুনরুদ্ধারের জন্য আপনার মোবাইল ও আধারের সাথে নিরাপদে সংযুক্ত।"
+    accessibleViaMobileEmailDesc: "ভারতে যেকোনো জায়গায় সহজ ওটিপি পুনরুদ্ধারের জন্য আপনার মোবাইল ও আধারের সাথে নিরাপদে সংযুক্ত।",
+    noSpeechDetected: "কোনো কণ্ঠস্বর সনাক্ত হয়নি। অনুগ্রহ করে স্পষ্টভাবে বলুন।"
   }
 };
 

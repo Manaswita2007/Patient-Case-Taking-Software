@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import { Volume2, VolumeX } from 'lucide-react';
-import { speakText, stopSpeech } from '../utils/speech';
+import { speakText, stopSpeech, subscribeToSpeech } from '../utils/speech';
 import { useAppContext } from '../context/AppContext';
 
 interface TTSButtonProps {
@@ -20,19 +20,27 @@ export default function TTSButton({
   id,
   autoPlay = false
 }: TTSButtonProps) {
-  const { language } = useAppContext();
+  const generatedId = useId();
+  const buttonId = id || generatedId;
+  const { t, language } = useAppContext();
   const [playing, setPlaying] = useState(false);
 
+  // Subscribe to centralized speech engine state
   useEffect(() => {
-    if (autoPlay && text) {
-      handleSpeak();
+    return subscribeToSpeech((activeSpeakerId, isSpeaking) => {
+      setPlaying(isSpeaking && activeSpeakerId === buttonId);
+    });
+  }, [buttonId]);
+
+  // Handle optional autoPlay cleanly
+  useEffect(() => {
+    if (autoPlay && text && text.trim()) {
+      const timer = setTimeout(() => {
+        handleSpeak();
+      }, 350);
+      return () => clearTimeout(timer);
     }
-    return () => {
-      if (playing) {
-        stopSpeech();
-      }
-    };
-  }, [text]);
+  }, [text, autoPlay]);
 
   const handleSpeak = (e?: React.MouseEvent) => {
     if (e) {
@@ -42,12 +50,11 @@ export default function TTSButton({
 
     if (playing) {
       stopSpeech();
-      setPlaying(false);
     } else {
-      setPlaying(true);
       speakText(text, language, {
-        onEnd: () => setPlaying(false),
-        onError: () => setPlaying(false)
+        speakerId: buttonId,
+        onError: () => setPlaying(false),
+        onEnd: () => setPlaying(false)
       });
     }
   };
@@ -64,13 +71,16 @@ export default function TTSButton({
     lg: 'px-3 py-2 text-sm'
   };
 
+  const stopLabel = t('stopAudio') || 'Stop Audio';
+  const playLabel = label || t('readScreen') || 'Read Aloud';
+
   return (
     <button
       type="button"
       id={id}
       onClick={handleSpeak}
-      title={playing ? 'Stop speech' : 'Listen / Read aloud (Audio assistant)'}
-      aria-label={playing ? 'Stop audio playback' : `Read aloud: ${label || text.slice(0, 40)}`}
+      title={playing ? stopLabel : playLabel}
+      aria-label={playing ? stopLabel : `${playLabel}: ${label || text.slice(0, 40)}`}
       className={`inline-flex items-center gap-1.5 rounded-full font-bold transition-all cursor-pointer select-none shrink-0 ${
         playing
           ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30 scale-105 animate-pulse ring-2 ring-amber-400'
@@ -82,7 +92,7 @@ export default function TTSButton({
       ) : (
         <Volume2 className={`${iconSizes[size]} text-teal-600 dark:text-teal-400`} />
       )}
-      {label && <span>{playing ? 'Stop Audio' : label}</span>}
+      {label && <span>{playing ? stopLabel : label}</span>}
     </button>
   );
 }

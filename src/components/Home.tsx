@@ -5,7 +5,8 @@ import {
   ChevronRight, HeartPulse, Lock, ActivitySquare, Network,
   Leaf, FileText, CheckCircle2,
   Hexagon, CircleDot, Boxes, Sparkles, Clock, Languages, CreditCard,
-  Check, Copy, Activity, HelpCircle, ChevronDown
+  Check, Copy, Activity, HelpCircle, ChevronDown, Siren, Building2,
+  ArrowRight, Zap, Radio, Ambulance, MapPin, Navigation, Award, Compass, HeartHandshake, Mic
 } from 'lucide-react';
 import { useAppContext, LANGUAGE_NAMES } from '../context/AppContext';
 import { useEffect, useState, useRef } from 'react';
@@ -22,18 +23,15 @@ const GridBackground = () => {
   const rotateX = useTransform(scrollY, [0, 1000], [50, 20]);
 
   return (
-    <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden bg-slate-50 dark:bg-[#030712] perspective-1000">
+    <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden bg-transparent perspective-1000">
       
       {/* 3D Moving Grid Floor */}
       <motion.div 
         style={{ y, rotateX }}
-        className="absolute inset-[-100%] origin-top bg-[linear-gradient(to_right,#06b6d41a_1px,transparent_1px),linear-gradient(to_bottom,#06b6d41a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:linear-gradient(to_bottom,transparent_10%,#000_60%,transparent_100%)] transform-style-3d" 
+        className="absolute inset-[-100%] origin-top bg-[linear-gradient(to_right,#0284c718_1px,transparent_1px),linear-gradient(to_bottom,#0284c718_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#06b6d41a_1px,transparent_1px),linear-gradient(to_bottom,#06b6d41a_1px,transparent_1px)] bg-[size:3.5rem_3.5rem] [mask-image:linear-gradient(to_bottom,transparent_5%,#000_50%,transparent_95%)] transform-style-3d" 
       />
       
-      {/* Noise Overlay */}
-      <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] mix-blend-overlay bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
-      
-      {/* Animated Glowing Ambient Orbs */}
+      {/* Animated Glowing Ambient Orbs for Light & Dark Modes */}
       <motion.div 
         animate={{ 
           scale: [1, 1.15, 1],
@@ -42,48 +40,39 @@ const GridBackground = () => {
           y: [0, -20, 0]
         }}
         transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-cyan-500/20 dark:bg-cyan-600/30 blur-3xl"
+        className="absolute top-[-10%] left-[-10%] w-[55vw] h-[55vw] rounded-full bg-gradient-to-br from-sky-400/25 to-blue-500/15 dark:from-cyan-600/30 dark:to-blue-700/20 blur-3xl"
       />
       <motion.div 
         animate={{ 
           scale: [1.1, 0.95, 1.1],
-          opacity: [0.4, 0.6, 0.4],
+          opacity: [0.35, 0.55, 0.35],
           x: [0, -40, 0],
           y: [0, 30, 0]
         }}
         transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-        className="absolute top-[20%] right-[-10%] w-[45vw] h-[45vw] rounded-full bg-blue-500/20 dark:bg-blue-600/30 blur-3xl"
+        className="absolute top-[20%] right-[-10%] w-[45vw] h-[45vw] rounded-full bg-gradient-to-bl from-teal-300/25 to-emerald-400/15 dark:from-blue-600/30 dark:to-teal-700/20 blur-3xl"
       />
       <motion.div 
         animate={{ 
           scale: [0.95, 1.1, 0.95],
-          opacity: [0.3, 0.5, 0.3]
+          opacity: [0.25, 0.45, 0.25]
         }}
         transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 4 }}
-        className="absolute bottom-[-15%] left-[20%] w-[60vw] h-[60vw] rounded-full bg-indigo-500/15 dark:bg-indigo-600/25 blur-3xl"
+        className="absolute bottom-[-15%] left-[20%] w-[60vw] h-[60vw] rounded-full bg-gradient-to-tr from-amber-200/25 to-orange-300/15 dark:from-indigo-600/25 dark:to-purple-900/20 blur-3xl"
       />
-
-      {/* Animated SVG ECG Pulse Waves across Background */}
-      <div className="absolute inset-x-0 top-[22%] opacity-20 dark:opacity-30 flex items-center justify-center overflow-hidden">
-        <svg className="w-full h-32 text-cyan-500" viewBox="0 0 1200 120" preserveAspectRatio="none">
-          <motion.path
-            d="M0,60 L200,60 L230,20 L250,100 L270,40 L290,75 L310,60 L600,60 L630,15 L650,105 L670,35 L690,80 L710,60 L1000,60 L1030,25 L1050,95 L1070,45 L1090,70 L1110,60 L1200,60"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            initial={{ pathLength: 0, pathOffset: 0 }}
-            animate={{ pathLength: 1, pathOffset: [0, 1] }}
-            transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
-          />
-        </svg>
-      </div>
 
       {/* Floating Ambient Medical Micro-particles */}
       <div className="absolute inset-0 pointer-events-none">
-        {[...Array(12)].map((_, i) => (
+        {[...Array(14)].map((_, i) => (
           <motion.div
             key={i}
-            className="absolute rounded-full bg-cyan-400/40 dark:bg-cyan-300/30 blur-[1px]"
+            className={`absolute rounded-full blur-[0.5px] ${
+              i % 3 === 0 
+                ? 'bg-sky-500/35 dark:bg-cyan-300/30' 
+                : i % 3 === 1 
+                ? 'bg-emerald-500/30 dark:bg-emerald-300/25' 
+                : 'bg-amber-500/30 dark:bg-amber-300/20'
+            }`}
             style={{
               width: `${(i % 3) * 4 + 4}px`,
               height: `${(i % 3) * 4 + 4}px`,
@@ -93,7 +82,7 @@ const GridBackground = () => {
             animate={{
               y: [0, -40 - (i * 5), 0],
               x: [0, (i % 2 === 0 ? 20 : -20), 0],
-              opacity: [0.2, 0.7, 0.2],
+              opacity: [0.25, 0.75, 0.25],
               scale: [1, 1.4, 1]
             }}
             transition={{
@@ -105,68 +94,46 @@ const GridBackground = () => {
           />
         ))}
       </div>
-    </div>
-  );
-};
 
-// 3D Floating abstract tech/medical elements
-const FloatingVisuals = () => {
-  const { scrollY } = useScroll();
-  const y1 = useTransform(scrollY, [0, 1000], [0, -250]);
-  const y2 = useTransform(scrollY, [0, 1000], [0, 250]);
-  const y3 = useTransform(scrollY, [0, 1000], [0, -150]);
-
-  return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden z-10 hidden lg:block perspective-1000">
-      
-      {/* 3D Geometric Tech Element with Pulse Glow */}
-      <motion.div
-        style={{ y: y1, transformStyle: 'preserve-3d' }}
-        className="absolute top-[15%] left-[5%] w-48 h-48"
-      >
-        <motion.div
-           animate={{ rotateZ: 360 }}
-           transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
-           className="w-full h-full bg-white/10 dark:bg-cyan-900/10 backdrop-blur-md border border-cyan-500/20 dark:border-cyan-500/30 rounded-[2rem] flex flex-col items-center justify-center shadow-[0_0_30px_rgba(6,182,212,0.15)]"
-           style={{ translateZ: '50px' }}
+      {/* Dynamic Animated ECG Heart Rate Pulse Wave */}
+      <div className="absolute inset-x-0 top-1/3 pointer-events-none overflow-hidden opacity-35 dark:opacity-25 flex items-center justify-center">
+        <svg 
+          className="w-full h-28 max-w-6xl mx-auto" 
+          viewBox="0 0 1000 100" 
+          fill="none" 
+          preserveAspectRatio="none"
         >
-          <Hexagon className="w-16 h-16 text-cyan-500 mb-4 opacity-80 drop-shadow-[0_0_15px_rgba(6,182,212,0.8)]" />
-          <div className="flex gap-2">
-            <div className="h-1.5 w-8 bg-cyan-400/50 rounded-full"></div>
-            <div className="h-1.5 w-4 bg-cyan-400/50 rounded-full"></div>
-          </div>
-        </motion.div>
-      </motion.div>
-
-      {/* 3D Holistic Node with Radiant Pulse */}
-      <motion.div
-        style={{ y: y2, transformStyle: 'preserve-3d' }}
-        className="absolute top-[40%] right-[5%] w-56 h-56"
-      >
-         <motion.div
-            animate={{ rotateZ: -360 }}
-            transition={{ duration: 50, repeat: Infinity, ease: "linear" }}
-            className="w-full h-full bg-white/10 dark:bg-emerald-900/10 backdrop-blur-md border border-emerald-500/20 dark:border-emerald-500/30 rounded-full flex flex-col items-center justify-center shadow-[0_0_35px_rgba(16,185,129,0.15)]"
-            style={{ translateZ: '70px' }}
-         >
-          <CircleDot className="w-20 h-20 text-emerald-500 mb-4 opacity-80 drop-shadow-[0_0_15px_rgba(16,185,129,0.8)]" />
-          <div className="h-1.5 w-16 bg-emerald-400/50 rounded-full"></div>
-         </motion.div>
-      </motion.div>
-
-      {/* 3D Datacube */}
-      <motion.div
-        style={{ y: y3, transformStyle: 'preserve-3d' }}
-        className="absolute bottom-[10%] left-[25%] w-32 h-32"
-      >
-        <motion.div
-          animate={{ rotateX: 360, rotateY: 360 }}
-          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-          className="w-full h-full border border-indigo-500/30 rounded-xl flex items-center justify-center bg-indigo-900/5 backdrop-blur-md shadow-[0_0_30px_rgba(99,102,241,0.2)]"
-        >
-          <Boxes className="w-12 h-12 text-indigo-400 opacity-80 drop-shadow-[0_0_10px_rgba(99,102,241,0.8)]" />
-        </motion.div>
-      </motion.div>
+          <defs>
+            <linearGradient id="homeEcgGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#0284c7" stopOpacity="0" />
+              <stop offset="30%" stopColor="#0ea5e9" stopOpacity="0.5" />
+              <stop offset="50%" stopColor="#10b981" stopOpacity="0.9" />
+              <stop offset="70%" stopColor="#0ea5e9" stopOpacity="0.5" />
+              <stop offset="100%" stopColor="#0284c7" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <path
+            d="M0,50 L150,50 L165,50 L175,42 L185,56 L195,14 L205,86 L215,44 L225,54 L240,50 L450,50 L465,50 L475,42 L485,56 L495,14 L505,86 L515,44 L525,54 L540,50 L750,50 L765,50 L775,42 L785,56 L795,14 L805,86 L815,44 L825,54 L840,50 L1000,50"
+            stroke="currentColor"
+            strokeWidth="1"
+            className="text-slate-300/40 dark:text-cyan-900/30"
+          />
+          <motion.path
+            d="M0,50 L150,50 L165,50 L175,42 L185,56 L195,14 L205,86 L215,44 L225,54 L240,50 L450,50 L465,50 L475,42 L485,56 L495,14 L505,86 L515,44 L525,54 L540,50 L750,50 L765,50 L775,42 L785,56 L795,14 L805,86 L815,44 L825,54 L840,50 L1000,50"
+            stroke="url(#homeEcgGrad)"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            initial={{ pathLength: 0.2, pathOffset: 0 }}
+            animate={{ pathOffset: [0, 1] }}
+            transition={{
+              duration: 3.2,
+              repeat: Infinity,
+              ease: "linear"
+            }}
+          />
+        </svg>
+      </div>
     </div>
   );
 };
@@ -233,7 +200,7 @@ const TiltCard = ({ children, to, className = "", glowColor = "rgba(6,182,212,0.
          to={to}
          onMouseMove={handleMouseMove}
          onMouseLeave={handleMouseLeave}
-         className={`block h-full relative group rounded-[2.5rem] overflow-hidden transition-all duration-300 shadow-2xl border border-slate-200/50 dark:border-slate-700/50 bg-white/40 dark:bg-[#0a0f1c]/60 backdrop-blur-2xl ${className}`}
+         className={`block h-full relative group rounded-[2.5rem] overflow-hidden transition-all duration-300 border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 backdrop-blur-2xl shadow-[0_20px_50px_rgba(15,23,42,0.08),0_1px_3px_rgba(0,0,0,0.04)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:shadow-[0_25px_60px_rgba(15,23,42,0.14)] ${className}`}
        >
          {/* Dynamic Spotlight inside the card */}
          <motion.div
@@ -342,31 +309,40 @@ export default function Home() {
   return (
     <div className="flex-1 min-h-0 w-full overflow-y-auto relative bg-transparent transition-colors scroll-smooth">
       <GridBackground />
-      <FloatingVisuals />
       
-      {/* Advanced Hero Section */}
-      <div className="relative pt-6 pb-2 lg:pt-8 lg:pb-4 z-20 perspective-1000">
+      {/* Advanced Hero Section with Light Mode Elevated Aesthetics */}
+      <div className="relative pt-8 pb-4 lg:pt-10 lg:pb-6 z-20 perspective-1000">
          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
            <motion.div 
              initial={{ opacity: 0, scale: 0.95, rotateX: 10 }}
              animate={{ opacity: 1, scale: 1, rotateX: 0 }}
              transition={{ duration: 1.2, type: 'spring', bounce: 0.3 }}
              style={{ x: springX, y: springY, transformStyle: "preserve-3d" }}
-             className="max-w-3xl mx-auto relative z-20"
+             className="max-w-4xl mx-auto relative z-20"
            >
-             <motion.h1 style={{ translateZ: '60px' }} className="text-3xl md:text-4xl lg:text-5xl font-black text-slate-900 dark:text-white tracking-tighter mb-2 leading-[1.1] drop-shadow-2xl">
-               {t('appTitle')}
+             {/* Clinical Readiness Badge */}
+             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50/90 dark:bg-blue-950/60 border border-blue-200/90 dark:border-blue-800/60 shadow-[0_2px_12px_rgba(59,130,246,0.12)] mb-4 text-xs font-bold text-blue-900 dark:text-blue-300">
+               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+               <span className="tracking-wide">ABDM & DPDP COMPLIANT CLINICAL ECOSYSTEM</span>
+               <span className="text-slate-300 dark:text-slate-700">|</span>
+               <span className="text-blue-600 dark:text-cyan-400 font-mono text-[11px]">FAST-TRACK INTAKE READY</span>
+             </div>
+
+             <motion.h1 style={{ translateZ: '60px' }} className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight mb-3 leading-[1.1] drop-shadow-sm">
+               <span className="bg-gradient-to-r from-slate-950 via-blue-950 to-indigo-900 dark:from-white dark:via-blue-100 dark:to-cyan-200 bg-clip-text text-transparent">
+                 {t('appTitle')}
+               </span>
              </motion.h1>
              
-             <motion.p style={{ translateZ: '30px' }} className="text-sm md:text-base text-slate-700 dark:text-slate-300 max-w-xl mx-auto font-medium mb-4 leading-relaxed drop-shadow-md">
-               Bridging modern clinical workflows with intelligent structural clinical intake and integrated holistic systems.
+             <motion.p style={{ translateZ: '30px' }} className="text-sm md:text-base text-slate-700 dark:text-slate-300 max-w-2xl mx-auto font-medium mb-3 leading-relaxed">
+               Bridging modern clinical workflows with intelligent structural clinical intake, emergency hospital routing, and integrated Ayurvedic Dashavidha Pariksha.
              </motion.p>
            </motion.div>
          </div>
       </div>
 
       {/* Interactive 3D Portals Section */}
-      <div className="pb-10 pt-2 relative z-30">
+      <div className="pb-8 pt-2 relative z-30">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-2 gap-5 lg:gap-6">
             
@@ -375,27 +351,42 @@ export default function Home() {
               whileInView={{ opacity: 1, x: 0, rotateY: 0 }}
               viewport={{ once: true, margin: "-50px" }}
               transition={{ duration: 1.2, type: "spring", bounce: 0.25 }}
-              className="perspective-1000 h-[280px]"
+              className="perspective-1000 min-h-[300px]"
             >
               <TiltCard to="/patient/login" glowColor="rgba(249, 115, 22, 0.3)">
                 <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-orange-600/10 dark:from-orange-500/10 dark:to-orange-600/10" />
                 
-                <div className="relative p-5 flex flex-col items-center text-center h-full justify-center">
-                  <motion.div 
-                    className="w-14 h-14 bg-gradient-to-br from-white to-orange-50 dark:from-slate-900 dark:to-orange-950/30 rounded-2xl flex items-center justify-center mb-3 border border-orange-200 dark:border-orange-800 shadow-[inset_0_4px_15px_rgba(0,0,0,0.1)] dark:shadow-[inset_0_4px_15px_rgba(0,0,0,0.4)]"
-                    style={{ translateZ: '60px' }}
-                  >
-                    <UserCircle className="w-6 h-6 text-orange-600 dark:text-orange-400 drop-shadow-[0_0_10px_rgba(249,115,22,0.4)]" />
-                  </motion.div>
+                <div className="relative p-6 flex flex-col items-center text-center h-full justify-between">
+                  <div className="flex flex-col items-center">
+                    <motion.div 
+                      className="w-14 h-14 bg-gradient-to-br from-white to-orange-50 dark:from-slate-900 dark:to-orange-950/30 rounded-2xl flex items-center justify-center mb-3 border border-orange-200 dark:border-orange-800 shadow-[inset_0_4px_15px_rgba(0,0,0,0.06)] dark:shadow-[inset_0_4px_15px_rgba(0,0,0,0.4)]"
+                      style={{ translateZ: '60px' }}
+                    >
+                      <UserCircle className="w-7 h-7 text-orange-600 dark:text-orange-400 drop-shadow-[0_0_10px_rgba(249,115,22,0.4)]" />
+                    </motion.div>
+                    
+                    <motion.h2 style={{ translateZ: '40px' }} className="text-xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">
+                      {t('patientPortal')}
+                    </motion.h2>
+                    <motion.p style={{ translateZ: '20px' }} className="text-slate-600 dark:text-slate-400 mb-3 text-xs md:text-sm max-w-xs mx-auto leading-relaxed">
+                      {t('patientDesc')}
+                    </motion.p>
+
+                    {/* Light-mode friendly feature tags */}
+                    <div className="flex flex-wrap justify-center gap-1.5 mb-4">
+                      <span className="px-2 py-0.5 rounded-md bg-orange-100/70 dark:bg-orange-950/40 text-orange-800 dark:text-orange-300 text-[10px] font-bold">
+                        Mobile / OTP Check-in
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-blue-100/70 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 text-[10px] font-bold">
+                        Continuous Voice Input
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold">
+                        Zero Waiting
+                      </span>
+                    </div>
+                  </div>
                   
-                  <motion.h2 style={{ translateZ: '40px' }} className="text-lg md:text-xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">
-                    {t('patientPortal')}
-                  </motion.h2>
-                  <motion.p style={{ translateZ: '20px' }} className="text-slate-600 dark:text-slate-400 mb-4 flex-1 text-xs md:text-sm max-w-xs mx-auto">
-                    {t('patientDesc')}
-                  </motion.p>
-                  
-                  <motion.div style={{ translateZ: '50px' }} className="w-[80%] py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-[10px] uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5 shadow-[0_8px_20px_rgba(249,115,22,0.3)]">
+                  <motion.div style={{ translateZ: '50px' }} className="w-[85%] py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-[11px] uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5 shadow-[0_8px_20px_rgba(249,115,22,0.3)]">
                     {t('kioskMode')} <ChevronRight className="w-3.5 h-3.5" />
                   </motion.div>
                 </div>
@@ -407,33 +398,205 @@ export default function Home() {
               whileInView={{ opacity: 1, x: 0, rotateY: 0 }}
               viewport={{ once: true, margin: "-50px" }}
               transition={{ duration: 1.2, type: "spring", bounce: 0.25, delay: 0.15 }}
-              className="perspective-1000 h-[280px]"
+              className="perspective-1000 min-h-[300px]"
             >
               <TiltCard to="/doctor/login" glowColor="rgba(16, 185, 129, 0.3)">
                 <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-emerald-600/10 dark:from-emerald-500/10 dark:to-emerald-600/10" />
                 
-                <div className="relative p-5 flex flex-col items-center text-center h-full justify-center">
-                  <motion.div 
-                    className="w-14 h-14 bg-gradient-to-br from-white to-emerald-50 dark:from-slate-900 dark:to-emerald-950/30 rounded-2xl flex items-center justify-center mb-3 border border-emerald-200 dark:border-emerald-800 shadow-[inset_0_4px_15px_rgba(0,0,0,0.1)] dark:shadow-[inset_0_4px_15px_rgba(0,0,0,0.4)]"
-                    style={{ translateZ: '60px' }}
-                  >
-                    <Stethoscope className="w-6 h-6 text-emerald-500 drop-shadow-[0_0_10px_rgba(16,185,129,0.4)]" />
-                  </motion.div>
+                <div className="relative p-6 flex flex-col items-center text-center h-full justify-between">
+                  <div className="flex flex-col items-center">
+                    <motion.div 
+                      className="w-14 h-14 bg-gradient-to-br from-white to-emerald-50 dark:from-slate-900 dark:to-emerald-950/30 rounded-2xl flex items-center justify-center mb-3 border border-emerald-200 dark:border-emerald-800 shadow-[inset_0_4px_15px_rgba(0,0,0,0.06)] dark:shadow-[inset_0_4px_15px_rgba(0,0,0,0.4)]"
+                      style={{ translateZ: '60px' }}
+                    >
+                      <Stethoscope className="w-7 h-7 text-emerald-500 drop-shadow-[0_0_10px_rgba(16,185,129,0.4)]" />
+                    </motion.div>
+                    
+                    <motion.h2 style={{ translateZ: '40px' }} className="text-xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">
+                      {t('providerDashboard')}
+                    </motion.h2>
+                    <motion.p style={{ translateZ: '20px' }} className="text-slate-600 dark:text-slate-400 mb-3 text-xs md:text-sm max-w-xs mx-auto leading-relaxed">
+                      {t('providerDesc')}
+                    </motion.p>
+
+                    {/* Light-mode friendly feature tags */}
+                    <div className="flex flex-wrap justify-center gap-1.5 mb-4">
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold">
+                        Clinical Cockpit & EMR
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-teal-100/70 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300 text-[10px] font-bold">
+                        Digital Rx PDF Upload
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-blue-100/70 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 text-[10px] font-bold">
+                        SMS & Email Tele-Notify
+                      </span>
+                    </div>
+                  </div>
                   
-                  <motion.h2 style={{ translateZ: '40px' }} className="text-lg md:text-xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">
-                    {t('providerDashboard')}
-                  </motion.h2>
-                  <motion.p style={{ translateZ: '20px' }} className="text-slate-600 dark:text-slate-400 mb-4 flex-1 text-xs md:text-sm max-w-xs mx-auto">
-                    {t('providerDesc')}
-                  </motion.p>
-                  
-                  <motion.div style={{ translateZ: '50px' }} className="w-[80%] py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5 shadow-[0_8px_20px_rgba(16,185,129,0.3)]">
+                  <motion.div style={{ translateZ: '50px' }} className="w-[85%] py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5 shadow-[0_8px_20px_rgba(16,185,129,0.3)]">
                     {t('secureLogin')} <ChevronRight className="w-3.5 h-3.5" />
                   </motion.div>
                 </div>
               </TiltCard>
             </motion.div>
 
+          </div>
+        </div>
+      </div>
+
+      {/* NEW LIGHT-MODE HIGH-IMPACT COMMAND DECK: Emergency Ambulance & Hospital Route Navigator */}
+      <div className="pb-10 relative z-30">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-6">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 text-[11px] font-bold uppercase tracking-wider border border-slate-200 dark:border-slate-700">
+              <Zap className="w-3.5 h-3.5 text-amber-500" /> Instant Access Hub
+            </span>
+            <h3 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white mt-1 tracking-tight">
+              Emergency Care & Real-Time Hospital Navigation
+            </h3>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-5">
+            {/* Card 1: 108 Emergency Ambulance Dispatch */}
+            <Link
+              to="/emergency"
+              className="group p-6 rounded-3xl bg-gradient-to-br from-white via-rose-50/40 to-red-50/30 dark:from-slate-900 dark:via-red-950/20 dark:to-slate-900 border border-rose-200/90 dark:border-rose-900/40 shadow-[0_10px_30px_rgba(244,63,94,0.06)] hover:shadow-[0_15px_40px_rgba(244,63,94,0.12)] transition-all flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-500 text-white flex items-center justify-center shadow-md shadow-red-500/20 group-hover:scale-105 transition-transform">
+                    <Ambulance className="w-6 h-6" />
+                  </div>
+                  <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300 text-[10px] font-black uppercase tracking-wider border border-red-200 dark:border-red-900/50">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span> Priority 108 Dispatch
+                  </span>
+                </div>
+                <h4 className="text-lg font-black text-slate-900 dark:text-white mb-1.5 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
+                  108 Emergency Ambulance Dispatch
+                </h4>
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
+                  Direct GPS integration with the national emergency ambulance grid. Instant driver tracking, real-time ETA, and acute vital handoff to trauma teams.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between pt-3 border-t border-rose-100 dark:border-rose-950/50">
+                <span className="text-xs font-bold text-red-600 dark:text-red-400 flex items-center gap-1">
+                  Launch 108 Dispatcher <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                </span>
+                <span className="text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-2 py-0.5 rounded-full border border-red-200 dark:border-red-900/50">
+                  National 108 Grid
+                </span>
+              </div>
+            </Link>
+
+            {/* Card 2: Nearby Network Hospitals & Shortest Route */}
+            <Link
+              to="/hospitals"
+              className="group p-6 rounded-3xl bg-gradient-to-br from-white via-sky-50/40 to-blue-50/30 dark:from-slate-900 dark:via-blue-950/20 dark:to-slate-900 border border-sky-200/90 dark:border-sky-900/40 shadow-[0_10px_30px_rgba(2,132,199,0.06)] hover:shadow-[0_15px_40px_rgba(2,132,199,0.12)] transition-all flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-600 to-blue-600 text-white flex items-center justify-center shadow-md shadow-sky-500/20 group-hover:scale-105 transition-transform">
+                    <Navigation className="w-6 h-6" />
+                  </div>
+                  <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 text-[10px] font-black uppercase tracking-wider border border-sky-200 dark:border-sky-900/50">
+                    <MapPin className="w-3 h-3 text-sky-600" /> GPS Shortest Path
+                  </span>
+                </div>
+                <h4 className="text-lg font-black text-slate-900 dark:text-white mb-1.5 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                  Network Hospitals & Turn-by-Turn Route
+                </h4>
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
+                  Locate nearby accredited hospitals, inspect live ICU & oxygen bed availability, and draw the immediate shortest OSRM road route directly to the triage bay.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between pt-3 border-t border-sky-100 dark:border-sky-950/50">
+                <span className="text-xs font-bold text-sky-600 dark:text-sky-400 flex items-center gap-1">
+                  View Hospitals on Map <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                </span>
+                <span className="text-[10px] font-mono font-bold text-slate-400 dark:text-slate-500">Live Bed & Route Sync</span>
+              </div>
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* NEW SECTION: 4-Step Intelligent Care Workflow */}
+      <div className="pb-12 relative z-30">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-[11px] font-bold uppercase tracking-wider border border-blue-200 dark:border-blue-900/50">
+              <Sparkles className="w-3.5 h-3.5 text-blue-500" /> How HealthPoint Works
+            </span>
+            <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1.5 tracking-tight">
+              4-Step Frictionless Patient Care Journey
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-xl mx-auto mt-1">
+              Engineered for absolute ease-of-use with zero paper forms and continuous voice accessibility.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-5 rounded-3xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800 shadow-[0_4px_20px_rgba(15,23,42,0.04)] flex flex-col justify-between">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-950/50 text-orange-600 dark:text-orange-400 font-black text-sm flex items-center justify-center mb-3">
+                  01
+                </div>
+                <h5 className="font-black text-slate-900 dark:text-white text-base mb-1.5">Check-in Your Way</h5>
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                  Log in with your 14-digit ABHA ID, 10-digit mobile number (with OTP), or Email. No mandatory national ID required.
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[10px] font-bold text-orange-600 dark:text-orange-400">
+                Instant Token Issued
+              </div>
+            </div>
+
+            <div className="p-5 rounded-3xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800 shadow-[0_4px_20px_rgba(15,23,42,0.04)] flex flex-col justify-between">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-black text-sm flex items-center justify-center mb-3">
+                  02
+                </div>
+                <h5 className="font-black text-slate-900 dark:text-white text-base mb-1.5">Voice AI Intake</h5>
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                  Speak comfortably in English, Hindi, or Bengali. Voice recording never automatically stops—pause or think freely anytime.
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[10px] font-bold text-blue-600 dark:text-blue-400">
+                Verbatim Recognition
+              </div>
+            </div>
+
+            <div className="p-5 rounded-3xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800 shadow-[0_4px_20px_rgba(15,23,42,0.04)] flex flex-col justify-between">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 font-black text-sm flex items-center justify-center mb-3">
+                  03
+                </div>
+                <h5 className="font-black text-slate-900 dark:text-white text-base mb-1.5">Clinical Synthesis</h5>
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                  Dual-paradigm analysis integrates Western allopathic vitals triage with classical 10-fold Ayurvedic Dashavidha Pariksha.
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                Pre-Consultation EMR
+              </div>
+            </div>
+
+            <div className="p-5 rounded-3xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800 shadow-[0_4px_20px_rgba(15,23,42,0.04)] flex flex-col justify-between">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 font-black text-sm flex items-center justify-center mb-3">
+                  04
+                </div>
+                <h5 className="font-black text-slate-900 dark:text-white text-base mb-1.5">Verified Rx & Sync</h5>
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                  Doctor uploads their official digital prescription PDF. You receive instant SMS and Gmail notification with full download access.
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                Bidirectional Tele-Notify
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -989,6 +1152,28 @@ function HomeInteractiveSections() {
                     </h3>
                     <div className="text-sm font-semibold text-amber-600 dark:text-amber-400 mb-4 tracking-normal">
                       {current.subtitle}
+                    </div>
+
+                    {/* Holistic Clinical Harmony Indicators */}
+                    <div className="grid grid-cols-3 gap-2.5 mb-5 p-3.5 bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/40 rounded-2xl text-center">
+                      <div>
+                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300">Vata System</span>
+                        <div className="w-full bg-amber-200/70 dark:bg-amber-900/50 h-2 rounded-full mt-1 overflow-hidden">
+                          <div className="bg-amber-500 h-full rounded-full" style={{ width: `${60 + (selectedAyushPillar * 4) % 35}%` }}></div>
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300">Pitta Metabolism</span>
+                        <div className="w-full bg-amber-200/70 dark:bg-amber-900/50 h-2 rounded-full mt-1 overflow-hidden">
+                          <div className="bg-orange-500 h-full rounded-full" style={{ width: `${55 + (selectedAyushPillar * 7) % 40}%` }}></div>
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300">Kapha & Ojas</span>
+                        <div className="w-full bg-amber-200/70 dark:bg-amber-900/50 h-2 rounded-full mt-1 overflow-hidden">
+                          <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${65 + (selectedAyushPillar * 5) % 30}%` }}></div>
+                        </div>
+                      </div>
                     </div>
 
                     <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed mb-6 tracking-normal">

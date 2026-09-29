@@ -10,7 +10,7 @@ export default function NotFound() {
   const navigate = useNavigate();
 
   return (
-    <div className="flex-1 min-h-0 w-full flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-[#030712] text-slate-900 dark:text-slate-100 overflow-y-auto">
+    <div className="flex-1 min-h-0 w-full flex flex-col items-center justify-center p-6 bg-transparent text-slate-900 dark:text-slate-100 overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -37,7 +37,7 @@ export default function NotFound() {
           <TTSButton
             text="404 Page Not Found. The clinical route or page you requested could not be located in HealthPoint. You can return to the home page or access emergency services."
             size="sm"
-            label="Read Screen"
+            label={t('readScreen') || 'Read Screen'}
           />
         </div>
 

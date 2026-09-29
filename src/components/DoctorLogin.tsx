@@ -233,9 +233,7 @@ export default function DoctorLogin() {
   };
 
   return (
-    <div className="flex-1 min-h-0 h-full w-full overflow-y-auto overflow-x-hidden bg-slate-50 dark:bg-slate-900 relative transition-colors">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-100/40 dark:from-teal-900/30 via-slate-50 dark:via-slate-900 to-slate-50 dark:to-slate-900 pointer-events-none"></div>
-
+    <div className="flex-1 min-h-0 h-full w-full overflow-y-auto overflow-x-hidden bg-transparent relative transition-colors">
       <div className="min-h-full w-full flex flex-col items-center justify-start px-3 py-4 sm:py-6 relative z-10">
         {/* Retractable Back / Exit Button with Confirmation Flow */}
         <div className="w-full max-w-md mb-3 flex items-center justify-start z-20">
